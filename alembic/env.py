@@ -24,10 +24,11 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from core.database import Base
+from models import *
 target_metadata = Base.metadata
 
 # Import all models to ensure they are registered with Base.metadata
-from models import user
+from models import user, role, staff, employee, customer, stall, area, userRole, listeningHistory, stallContent
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
