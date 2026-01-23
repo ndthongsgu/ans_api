@@ -13,7 +13,5 @@ class UserRole(Base):
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     role_id = Column(String(36), ForeignKey("roles.id"), nullable=False)
 
-    code = Column(String(50), nullable=False) #enum userRole
-
     user = relationship("User", back_populates="roles")
     role = relationship("Role", back_populates="users")
