@@ -9,3 +9,37 @@ GET http://127.0.0.1:8000/hello/User
 Accept: application/json
 
 ###
+
+# Create a user
+POST http://127.0.0.1:8000/users/
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "email": "admin@example.com",
+  "password": "secret123"
+}
+
+###
+
+# Login
+POST http://127.0.0.1:8000/api/auth/login
+Content-Type: application/json
+
+{
+  "username_or_email": "admin",
+  "password": "secret123"
+}
+
+###
+
+# Refresh token (use Authorization: Bearer <refreshToken> header)
+POST http://127.0.0.1:8000/api/auth/refresh
+Authorization: Bearer <refreshToken>
+
+###
+
+# Get profile (Bearer access token)
+GET http://127.0.0.1:8000/api/auth/me
+Authorization: Bearer <accessToken>
+

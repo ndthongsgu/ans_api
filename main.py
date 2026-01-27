@@ -1,14 +1,8 @@
 from fastapi import FastAPI
-from api.v1.users import router as user_router
-from api.v1.areas import router as area_router
-from api.v1.staffs import router as staff_router
-from api.v1.stalls import router as stall_router
-from api.v1.stall_contents import router as stall_content_router
-from api.v1.roles import router as role_router
-from api.v1.user_roles import router as user_role_router
-from api.v1.customers import router as customer_router
-from api.v1.employees import router as employee_router
-from api.v1.listening_histories import router as listening_history_router
+from api.v1.admin import router as admin_router
+from api.v1.owner import router as owner_router
+from api.v1.customer import router as customer_router
+from api.v1.auth import router as auth_router
 from core.database import engine, Base
 
 # Create tables
@@ -16,16 +10,12 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-app.include_router(user_router)
-app.include_router(area_router)
-app.include_router(staff_router)
-app.include_router(stall_router)
-app.include_router(stall_content_router)
-app.include_router(role_router)
-app.include_router(user_role_router)
-app.include_router(customer_router)
-app.include_router(employee_router)
-app.include_router(listening_history_router)
+app.include_router(admin_router, prefix="/admin")
+app.include_router(owner_router, prefix="/owner")
+app.include_router(customer_router, prefix="/customer")
+
+# Auth router (prefix /api/auth set in router)
+app.include_router(auth_router)
 
 
 @app.get("/")

@@ -28,7 +28,7 @@ from models import *
 target_metadata = Base.metadata
 
 # Import all models to ensure they are registered with Base.metadata
-from models import user, role, staff, employee, customer, stall, area, userRole, listeningHistory, stallContent
+from models import user, role, owner, employee, customer, stall, area, userRole, listeningHistory, stallContent, subscription_package
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
