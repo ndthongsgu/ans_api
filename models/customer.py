@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy import (
     Column, String, Boolean, Integer,
-    ForeignKey
+    ForeignKey, Index
 )
 from sqlalchemy.orm import relationship, declarative_base
 from core.database import Base
@@ -15,6 +15,8 @@ class Customer(Base):
     user_id = Column(String(36), ForeignKey("users.id"), unique=True)
     full_name = Column(String(255), nullable=False)
     phone = Column(String(20), nullable=True)
+    notification_enabled = Column(Boolean, default=True)
+    avatar_url = Column(String(500), nullable=True)
 
     user = relationship("User", back_populates="customer")
 

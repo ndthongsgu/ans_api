@@ -20,6 +20,9 @@ class User(Base):
     is_active = Column(Boolean, default=True)
 
     created_at = Column(Integer, nullable=False)
+    last_sync_at = Column(Integer, nullable=True)
+    device_id = Column(String(255), nullable=True)
+    notification_token = Column(String(255), nullable=True)
 
     roles = relationship("UserRole", back_populates="user")
     listening_histories = relationship(

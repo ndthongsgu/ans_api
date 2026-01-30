@@ -16,5 +16,6 @@ class Employee(Base):
     full_name = Column(String(255), nullable=False)
     phone = Column(String(20), nullable=True)
     position = Column(String(100), nullable=True)
+    department = Column(String(100), nullable=True)
 
     user = relationship("User", back_populates="employee")
