@@ -17,6 +17,22 @@ class TokenResponse(BaseModel):
     accessToken: str
     refreshToken: str
 
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+@router.post("/register", response_model=User)
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    service = UserService(db)
+    # Kiểm tra cả username và email xem đã tồn tại chưa
+    user_by_name = service.repository.find_by_username_or_email(payload.username)
+    user_by_email = service.repository.find_by_username_or_email(payload.email)
+    
+    if user_by_name or user_by_email:
+        raise HTTPException(status_code=400, detail="Username or Email already exists")
+    
+    return service.create_user(payload)
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
