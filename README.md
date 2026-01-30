@@ -14,7 +14,7 @@ Hướng dẫn kích hoạt trên máy dev:
 1) Cài dependencies dev:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
 ```
 
 2) Cài pre-commit hook:
