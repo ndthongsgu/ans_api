@@ -4,7 +4,6 @@ from .userRole import UserRole
 from .owner import Owner
 from .employee import Employee
 from .customer import Customer
-from .area import Area
 from .stall import Stall
 from .stallContent import StallContent
 from .listeningHistory import ListeningHistory

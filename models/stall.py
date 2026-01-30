@@ -11,7 +11,6 @@ class Stall(Base):
     __tablename__ = "stalls"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    area_id = Column(String(36), ForeignKey("areas.id"), nullable=True)
     owner_id = Column(String(36), ForeignKey("owners.id"), nullable=False)
 
     name = Column(String(255), nullable=False)
@@ -32,7 +31,6 @@ class Stall(Base):
     created_at = Column(Integer, nullable=False)
     updated_at = Column(Integer, nullable=True)
 
-    area = relationship("Area", back_populates="stalls")
     owner = relationship("Owner", back_populates="stalls")
     contents = relationship(
         "StallContent",
