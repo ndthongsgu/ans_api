@@ -3,75 +3,133 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from core.database import get_db
 from modules.auth.services.customer_service import CustomerService
-from modules.auth.dto.customer_dto import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest
+from modules.auth.services.verification_service import VerificationService, VerificationError
+from modules.auth.services.password_reset_service import PasswordResetService, PasswordResetError
+from modules.auth.dto.customer_dto import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, VerifyRequest, ForgotPasswordRequest, ResetPasswordRequest
 from models.user import User
 from utils.security import create_access_token, create_refresh_token, jwt, SECRET_KEY, ALGORITHM
+from fastapi import Header
+from utils.i18n import t
 
 router = APIRouter(prefix="/auth")
 
 security = HTTPBearer()
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+    locale = accept_language
     token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
         if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(status_code=401, detail=t('invalid_token', locale))
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
-            raise HTTPException(status_code=401, detail="User not found")
+            raise HTTPException(status_code=401, detail=t('user_not_found', locale))
         return user
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
+        raise HTTPException(status_code=401, detail=t('token_expired', locale))
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail=t('invalid_token', locale))
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+def login(payload: LoginRequest, db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+    locale = accept_language
     service = CustomerService(db)
     user = service.authenticate_customer(payload.email, payload.password)
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail=t('invalid_credentials', locale))
 
     access = create_access_token(user.id)
     refresh = create_refresh_token(user.id)
     return {"accessToken": access, "refreshToken": refresh}
 
-@router.post("/register", response_model=TokenResponse)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
-    service = CustomerService(db)
+from fastapi import Header
+
+
+@router.post("/register")
+def register(payload: RegisterRequest, accept_language: str | None = Header(None), db: Session = Depends(get_db)):
+    locale = accept_language
+    service = VerificationService(db)
     try:
-        db_user, customer = service.create_customer(payload)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        verification = service.create_verification(payload, locale=locale)
+    except VerificationError as e:
+        # Localize message
+        from utils.i18n import t
+        raise HTTPException(status_code=400, detail=t(e.code, locale))
+    except RuntimeError as e:
+        # Email sending/config error
+        from utils.i18n import t
+        raise HTTPException(status_code=500, detail=t('smtp_not_configured', accept_language))
+
+    from utils.i18n import t
+    return {"message": t('otp_sent', locale)}
+
+
+@router.post("/verify", response_model=TokenResponse)
+def verify(payload: VerifyRequest, accept_language: str | None = Header(None), db: Session = Depends(get_db)):
+    locale = accept_language
+    service = VerificationService(db)
+    try:
+        db_user, customer = service.verify_and_create(payload.email, payload.otp)
+    except VerificationError as e:
+        from utils.i18n import t
+        raise HTTPException(status_code=400, detail=t(e.code, locale))
 
     access = create_access_token(db_user.id)
     refresh = create_refresh_token(db_user.id)
     return {"accessToken": access, "refreshToken": refresh}
 
+
+@router.post('/forgot-password')
+def forgot_password(payload: ForgotPasswordRequest, accept_language: str | None = Header(None), db: Session = Depends(get_db)):
+    locale = accept_language
+    service = PasswordResetService(db)
+    try:
+        service.create_reset(payload.email, locale=locale)
+    except PasswordResetError as e:
+        raise HTTPException(status_code=400, detail=t(e.code, locale))
+
+    return {"message": t('reset_sent', locale)}
+
+
+@router.post('/reset-password')
+def reset_password(payload: ResetPasswordRequest, accept_language: str | None = Header(None), db: Session = Depends(get_db)):
+    locale = accept_language
+    service = PasswordResetService(db)
+    try:
+        service.verify_and_reset(payload.email, payload.otp, payload.new_password)
+    except PasswordResetError as e:
+        raise HTTPException(status_code=400, detail=t(e.code, locale))
+
+    return {"message": t('reset_success', locale)}
+
 @router.get("/me")
-def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+    locale = accept_language
     service = CustomerService(db)
     customer = service.get_customer_profile(current_user.id)
+    if not customer:
+        raise HTTPException(status_code=404, detail=t('profile_not_found', locale))
     return customer
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
+def refresh(payload: RefreshRequest, db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+    locale = accept_language
     try:
         payload_refresh = jwt.decode(payload.refreshToken, SECRET_KEY, algorithms=[ALGORITHM])
         if payload_refresh.get("type") != "refresh":
-            raise HTTPException(status_code=401, detail="Invalid token type")
+            raise HTTPException(status_code=401, detail=t('invalid_token', locale))
         user_id = payload_refresh.get("sub")
         if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(status_code=401, detail=t('invalid_token', locale))
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
-            raise HTTPException(status_code=401, detail="User not found")
+            raise HTTPException(status_code=401, detail=t('user_not_found', locale))
         access = create_access_token(user_id)
         refresh = create_refresh_token(user_id)
         return {"accessToken": access, "refreshToken": refresh}
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Refresh token expired")
+        raise HTTPException(status_code=401, detail=t('token_expired', accept_language))
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
+        raise HTTPException(status_code=401, detail=t('invalid_token', accept_language))

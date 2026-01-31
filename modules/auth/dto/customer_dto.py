@@ -18,6 +18,18 @@ class UserCreate(BaseModel):
 class RefreshRequest(BaseModel):
     refreshToken: str
 
+class VerifyRequest(BaseModel):
+    email: str
+    otp: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    otp: str
+    new_password: str
+
 class TokenResponse(BaseModel):
     accessToken: str
     refreshToken: str

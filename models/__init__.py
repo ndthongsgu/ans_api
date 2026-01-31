@@ -15,3 +15,5 @@ from .notification import Notification
 from .pending_upload import PendingUpload
 from .audio_playback_rule import AudioPlaybackRule
 from .data_sync_metadata import DataSyncMetadata
+from .email_verification import EmailVerification
+from .password_reset import PasswordReset

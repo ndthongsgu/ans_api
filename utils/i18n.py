@@ -1,0 +1,117 @@
+from typing import Dict
+
+# Minimal translation map. Add new message keys here as needed.
+_TRANSLATIONS: Dict[str, Dict[str, str]] = {
+    'en': {
+        'otp_subject': '[ANS] Email verification',
+        'otp_body': 'Your verification code is: {otp}\nThis code is valid for {minutes} minutes.',
+        'otp_sent': 'OTP sent to email',
+        'invalid_otp': 'Invalid OTP',
+        'otp_expired': 'OTP expired',
+        'no_pending': 'No pending verification for this email',
+        'too_many_attempts': 'Too many attempts',
+        'email_exists': 'Email already exists',
+        'username_exists': 'Username already exists',
+        'reset_subject': '[ANS] Password reset',
+        'reset_body': 'Your password reset code is: {otp}\nThis code is valid for {minutes} minutes.',
+        'reset_sent': 'Password reset code sent to email',
+        'invalid_otp': 'Invalid OTP',
+        'invalid_credentials': 'Invalid credentials',
+        'smtp_not_configured': 'SMTP not configured',
+        'invalid_credentials': 'Invalid credentials',
+        'invalid_token': 'Invalid token',
+        'token_expired': 'Token expired',
+        'user_not_found': 'User not found',
+        'profile_not_found': 'Profile not found',
+    },
+    'vi': {
+        'otp_subject': '[ANS] Xác thực email',
+        'otp_body': 'Mã xác thực của bạn là: {otp}\nMã có hiệu lực trong {minutes} phút.',
+        'otp_sent': 'Mã OTP đã được gửi tới email',
+        'invalid_otp': 'Mã OTP không hợp lệ',
+        'otp_expired': 'Mã OTP đã hết hạn',
+        'no_pending': 'Không có yêu cầu xác thực cho email này',
+        'too_many_attempts': 'Quá nhiều lần thử',
+        'email_exists': 'Email đã tồn tại',
+        'username_exists': 'Tên đăng nhập đã tồn tại',
+        'reset_subject': '[ANS] Đặt lại mật khẩu',
+        'reset_body': 'Mã đặt lại mật khẩu của bạn là: {otp}\nMã có hiệu lực trong {minutes} phút.',
+        'reset_sent': 'Mã đặt lại mật khẩu đã được gửi tới email',
+        'reset_success': 'Đặt lại mật khẩu thành công',
+        'invalid_otp': 'Mã OTP không hợp lệ',
+        'smtp_not_configured': 'SMTP chưa được cấu hình',
+        'invalid_credentials': 'Tên đăng nhập hoặc mật khẩu không đúng',
+        'invalid_token': 'Token không hợp lệ',
+        'token_expired': 'Token đã hết hạn',
+        'user_not_found': 'Không tìm thấy người dùng',
+        'profile_not_found': 'Không tìm thấy hồ sơ',
+    },
+    'ko': {
+        'otp_subject': '[ANS] 이메일 인증',
+        'otp_body': '인증 코드는: {otp}\n이 코드는 {minutes}분 동안 유효합니다.',
+        'otp_sent': '인증 코드가 이메일로 전송되었습니다',
+        'invalid_otp': '유효하지 않은 인증 코드',
+        'otp_expired': '인증 코드가 만료되었습니다',
+        'no_pending': '이 이메일에 대한 대기 중인 인증이 없습니다',
+        'too_many_attempts': '시도 횟수 초과',
+        'email_exists': '이메일이 이미 존재합니다',
+        'username_exists': '사용자 이름이 이미 존재합니다',
+        'reset_subject': '[ANS] 비밀번호 재설정',
+        'reset_body': '비밀번호 재설정 코드는: {otp}\n이 코드는 {minutes}분 동안 유효합니다.',
+        'reset_sent': '비밀번호 재설정 코드가 이메일로 전송되었습니다',
+        'reset_success': '비밀번호 재설정 성공',
+        'invalid_otp': '유효하지 않은 인증 코드',
+        'smtp_not_configured': 'SMTP가 구성되지 않았습니다',
+        'invalid_credentials': '유효하지 않은 자격 증명',
+        'invalid_token': '유효하지 않은 토큰',
+        'token_expired': '토큰 만료',
+        'user_not_found': '사용자를 찾을 수 없습니다',
+        'profile_not_found': '프로필을 찾을 수 없습니다',
+    },
+    'zh': {
+        'otp_subject': '[ANS] 邮箱验证',
+        'otp_body': '您的验证码为：{otp}\n此验证码在 {minutes} 分钟内有效。',
+        'otp_sent': '验证码已发送到邮箱',
+        'invalid_otp': '验证码无效',
+        'otp_expired': '验证码已过期',
+        'no_pending': '此邮箱没有待处理的验证请求',
+        'too_many_attempts': '尝试次数过多',
+        'email_exists': '邮箱已存在',
+        'username_exists': '用户名已存在',
+        'reset_subject': '[ANS] 重置密码',
+        'reset_body': '您的密码重置代码为：{otp}\n此代码在 {minutes} 分钟内有效。',
+        'reset_sent': '密码重置代码已发送到邮箱',
+        'reset_success': '密码重置成功',
+        'invalid_otp': '验证码无效',
+        'smtp_not_configured': 'SMTP 未配置',
+        'invalid_credentials': '凭证无效',
+        'invalid_token': '无效的令牌',
+        'token_expired': '令牌已过期',
+        'user_not_found': '未找到用户',
+        'profile_not_found': '未找到个人资料',
+    },
+}
+
+
+def _normalize_locale(loc: str | None) -> str:
+    if not loc:
+        return 'en'
+    code = loc.split(',')[0].strip().lower()
+    if '-' in code:
+        code = code.split('-')[0]
+    if code in _TRANSLATIONS:
+        return code
+    return 'en'
+
+
+def t(key: str, locale: str | None = None, **kwargs) -> str:
+    loc = _normalize_locale(locale)
+    msg = _TRANSLATIONS.get(loc, _TRANSLATIONS['en']).get(key)
+    if msg is None:
+        msg = _TRANSLATIONS['en'].get(key, key)
+    if kwargs:
+        try:
+            return msg.format(**kwargs)
+        except Exception:
+            return msg
+    return msg
