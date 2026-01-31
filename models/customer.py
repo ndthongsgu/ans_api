@@ -21,8 +21,8 @@ class Customer(Base):
     user = relationship("User", back_populates="customer")
 
     # Relationships
-    listening_histories = relationship(
-        "ListeningHistory",
-        back_populates="customer",
-        cascade="all, delete-orphan"
-    )
+    # listening_histories = relationship(
+    #     "ListeningHistory",
+    #     back_populates="customer",
+    #     cascade="all, delete-orphan"
+    # )
