@@ -9,9 +9,9 @@ class CustomerService:
     def __init__(self, db: Session):
         self.db = db
 
-    def authenticate_customer(self, username_or_email: str, password: str):
+    def authenticate_customer(self, email: str, password: str):
         user = self.db.query(User).filter(
-            (User.username == username_or_email) | (User.email == username_or_email)
+            (User.username == email) | (User.email == email)
         ).first()
         if user and verify_password(password, user.password_hash):
             return user

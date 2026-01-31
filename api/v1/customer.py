@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from modules.auth.controllers.customer.controller import router as auth_router
+from modules.auth.controllers.customer_controller import router as auth_router
 
 router = APIRouter()
 
