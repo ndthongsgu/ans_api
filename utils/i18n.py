@@ -23,6 +23,8 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'token_expired': 'Token expired',
         'user_not_found': 'User not found',
         'profile_not_found': 'Profile not found',
+        'package_not_found': 'Package not found',
+        'purchase_success': 'Package purchased successfully',
     },
     'vi': {
         'otp_subject': '[ANS] Xác thực email',
@@ -45,6 +47,8 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'token_expired': 'Token đã hết hạn',
         'user_not_found': 'Không tìm thấy người dùng',
         'profile_not_found': 'Không tìm thấy hồ sơ',
+        'package_not_found': 'Không tìm thấy gói',
+        'purchase_success': 'Mua gói thành công',
     },
     'ko': {
         'otp_subject': '[ANS] 이메일 인증',

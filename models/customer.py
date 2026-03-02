@@ -17,8 +17,11 @@ class Customer(Base):
     phone = Column(String(20), nullable=True)
     notification_enabled = Column(Boolean, default=True)
     avatar_url = Column(String(500), nullable=True)
+    subscription_package_id = Column(String(36), ForeignKey("customer_subscription_packages.id"), nullable=True)
+    subscription_expires_at = Column(Integer, nullable=True)
 
     user = relationship("User", back_populates="customer")
+    subscription_package = relationship("CustomerSubscriptionPackage", back_populates="customers")
 
     # Relationships
     # listening_histories = relationship(

@@ -32,4 +32,4 @@ class ResetPasswordRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     accessToken: str
-    refreshToken: str
+

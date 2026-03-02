@@ -8,6 +8,7 @@ from .stall import Stall
 from .stallContent import StallContent
 from .listeningHistory import ListeningHistory
 from .subscription_package import SubscriptionPackage
+from .customer_subscription_package import CustomerSubscriptionPackage
 from .gps_zone_config import GPSZoneConfig
 from .system_config import SystemConfig
 from .app_performance_log import AppPerformanceLog
