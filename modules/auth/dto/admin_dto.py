@@ -1,8 +1,21 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 
 class LoginRequest(BaseModel):
-    username_or_email: str
+    # client may send either username or email
+    username: str | None = None
+    email: str | None = None
     password: str
+
+    @model_validator(mode="before")
+    def require_user(cls, values: dict):
+        uoe = values.get('username')
+        email = values.get('email')
+        if not (uoe or email):
+            raise ValueError('either username or email is required')
+        if not uoe:
+            # copy email into username field for service convenience
+            values['username'] = email
+        return values
 
 class RegisterRequest(BaseModel):
     username: str | None = None
