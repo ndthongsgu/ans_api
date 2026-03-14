@@ -52,7 +52,7 @@ def seed_admin():
             db.commit()
             print(f"admin user created ({admin_email}) with password '{admin_password}'")
         else:
-            print("admin user already exists in database")
+            print("admin user alread exists in database")
     finally:
         db.close()
 
