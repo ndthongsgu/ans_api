@@ -22,8 +22,8 @@ class EmployeeService:
             q = q.filter(User.email.ilike(f"%{filters['email']}%"))
         if filters.get('phone'):
             q = q.filter(Employee.phone.ilike(f"%{filters['phone']}%"))
-        if filters.get('isDeleted') is not None:
-            if filters['isDeleted']:
+        if filters.get('is_deleted') is not None:
+            if filters['is_deleted']:
                 q = q.filter(Employee.is_deleted == True)
             else:
                 q = q.filter(Employee.is_deleted == False)

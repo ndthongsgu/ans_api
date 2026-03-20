@@ -36,8 +36,8 @@ def paginate(req: StallPageRequest, current_user: User = Depends(get_current_use
             "latitude": s.latitude,
             "longitude": s.longitude,
             "radius": s.radius,
+            "is_deleted": s.is_deleted,
             "cover_image": s.cover_image,
-            "status": s.status,
             "category": s.category,
             "price_range": s.price_range,
             "opening_hours": s.opening_hours,
@@ -69,7 +69,27 @@ def create(stall: StallCreate, current_user: User = Depends(get_current_user), d
         s = service.create_stall(stall.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"success": True, "message": "Tạo thành công", "statusCode": 201}
+    return {
+        "success": True,
+        "message": "Tạo thành công",
+        "statusCode": 201,
+        "data": {
+            "id": s.id,
+            "owner_id": s.owner_id,
+            "name": s.name,
+            "latitude": s.latitude,
+            "longitude": s.longitude,
+            "radius": s.radius,
+            "is_deleted": s.is_deleted,
+            "cover_image": s.cover_image,
+            "category": s.category,
+            "price_range": s.price_range,
+            "opening_hours": s.opening_hours,
+            "contact_phone": s.contact_phone,
+            "website": s.website,
+            "created_at": s.created_at,
+        }
+    }
 
 @router.put("/{stall_id}")
 def update(stall_id: str, stall: StallUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -98,14 +118,18 @@ def detail(stall_id: str, current_user: User = Depends(get_current_user), db: Se
         "longitude": s.longitude,
         "radius": s.radius,
         "cover_image": s.cover_image,
-        "status": s.status,
         "category": s.category,
         "price_range": s.price_range,
         "opening_hours": s.opening_hours,
         "contact_phone": s.contact_phone,
         "website": s.website,
+        "is_deleted": s.is_deleted,
         "average_rating": s.average_rating,
         "total_reviews": s.total_reviews,
+        "owner": {
+            "id": s.owner.id,
+            "full_name": s.owner.full_name,
+        } if s.owner else None,
     }
 
 @router.post("/deactivate/{stall_id}")

@@ -30,3 +30,4 @@ class User(BaseModel):
     customer = relationship("Customer", uselist=False, back_populates="user")
     employee = relationship("Employee", uselist=False, back_populates="user")
     owner = relationship("Owner", uselist=False, back_populates="user")
+    action_logs = relationship("ActionLog", back_populates="user")

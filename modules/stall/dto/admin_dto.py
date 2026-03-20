@@ -13,7 +13,7 @@ class StallPageRequest(BaseModel):
     category: Optional[str] = None
 
 class StallCreate(BaseModel):
-    owner_id: str
+    owner_id: Optional[str] = None
     name: str
     latitude: float
     longitude: float
@@ -26,7 +26,7 @@ class StallCreate(BaseModel):
     website: Optional[str] = None
 
 class StallUpdate(BaseModel):
-    owner_id: str
+    owner_id: Optional[str] = None
     name: str
     latitude: float
     longitude: float

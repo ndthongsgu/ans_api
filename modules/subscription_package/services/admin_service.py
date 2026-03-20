@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from models.subscription_package import SubscriptionPackage
 from typing import Tuple, List
+import time
 
 class SubscriptionPackageService:
     def __init__(self, db: Session):
@@ -12,8 +13,8 @@ class SubscriptionPackageService:
         if filters.get('name'):
             q = q.filter(SubscriptionPackage.name.ilike(f"%{filters['name']}%"))
             
-        if filters.get('is_active') is not None:
-            q = q.filter(SubscriptionPackage.is_deleted == (not filters['is_active']))
+        if filters.get('is_deleted') is not None:
+            q = q.filter(SubscriptionPackage.is_deleted == filters['is_deleted'])
                 
         # Ordering
         if sortBy:
@@ -40,6 +41,7 @@ class SubscriptionPackageService:
             max_stalls=data.get('max_stalls', 1),
             max_audio_storage=data.get('max_audio_storage', 100),
             features=data.get('features'),
+            created_at=int(time.time()),
         )
         self.db.add(package)
         self.db.commit()
@@ -58,6 +60,7 @@ class SubscriptionPackageService:
         package.max_stalls = data.get('max_stalls', 1)
         package.max_audio_storage = data.get('max_audio_storage', 100)
         package.features = data.get('features')
+        package.updated_at = int(time.time())
         
         self.db.commit()
         return package

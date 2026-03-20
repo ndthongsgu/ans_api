@@ -20,7 +20,7 @@ class SubscriptionService:
 	def list_packages(self, active_only: bool = True):
 		query = self.db.query(SubscriptionPackage)
 		if active_only:
-			query = query.filter(SubscriptionPackage.is_active == True)
+			query = query.filter(SubscriptionPackage.is_deleted == False)
 		return query.order_by(SubscriptionPackage.price.asc()).all()
 
 	def get_package(self, package_id: str):

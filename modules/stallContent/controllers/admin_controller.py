@@ -41,7 +41,7 @@ def paginate(req: StallContentPageRequest, current_user: User = Depends(get_curr
             "audio_file_size": c.audio_file_size,
             "tts_script": c.tts_script,
             "version": c.version,
-            "is_active": not c.is_deleted,
+            "is_deleted": c.is_deleted,
         })
     return {"content": results, "totalElements": total}
 
@@ -90,6 +90,10 @@ def detail(content_id: str, current_user: User = Depends(get_current_user), db: 
     return {
         "id": c.id,
         "stall_id": c.stall_id,
+        "stall": {
+            "id": c.stall.id,
+            "name": c.stall.name,
+        } if c.stall else None,
         "language_code": c.language_code,
         "title": c.title,
         "description": c.description,
@@ -99,7 +103,9 @@ def detail(content_id: str, current_user: User = Depends(get_current_user), db: 
         "audio_file_size": c.audio_file_size,
         "tts_script": c.tts_script,
         "version": c.version,
-        "is_active": not c.is_deleted,
+        "is_deleted": c.is_deleted,
+        "created_at": c.created_at,
+        "updated_at": c.updated_at,
     }
 
 @router.post("/deactivate/{content_id}")

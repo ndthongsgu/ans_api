@@ -16,8 +16,8 @@ class StallContentService:
         if filters.get('stall_id'):
             q = q.filter(StallContent.stall_id == filters['stall_id'])
             
-        if filters.get('is_active') is not None:
-            q = q.filter(StallContent.is_deleted == (not filters['is_active']))
+        if filters.get('is_deleted') is not None:
+            q = q.filter(StallContent.is_deleted == filters['is_deleted'])
                 
         # Ordering
         if sortBy:

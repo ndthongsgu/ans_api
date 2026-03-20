@@ -9,7 +9,7 @@ class StallContentPageRequest(BaseModel):
     # filters
     title: Optional[str] = None
     stall_id: Optional[str] = None
-    is_active: Optional[bool] = None
+    is_deleted: Optional[bool] = None
 
 class StallContentCreate(BaseModel):
     stall_id: str
@@ -47,4 +47,4 @@ class StallContentOut(BaseModel):
     audio_file_size: Optional[int]
     tts_script: Optional[str]
     version: int
-    is_active: bool
+    is_deleted: bool

@@ -36,7 +36,7 @@ def paginate(req: EmployeePageRequest, current_user: User = Depends(get_current_
             "email": e.user.email if e.user else None,
             "phone": e.phone,
             "description": e.description,
-            "is_active": not e.is_deleted,
+            "is_deleted": e.is_deleted,
             "roles": [r.code for r in e.user.roles] if e.user else [],
         })
     return {"content": results, "totalElements": total}
@@ -92,7 +92,7 @@ def detail(emp_id: str, current_user: User = Depends(get_current_user), db: Sess
         "email": e.user.email if e.user else None,
         "phone": e.phone,
         "description": e.description,
-        "is_active": not e.is_deleted,
+        "is_deleted": e.is_deleted,
         "roles": [r.code for r in e.user.roles] if e.user else [],
     }
 

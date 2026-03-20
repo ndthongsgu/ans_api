@@ -8,7 +8,7 @@ class SubscriptionPackagePageRequest(BaseModel):
     sortDirection: Optional[str] = "DESC"
     # filters
     name: Optional[str] = None
-    is_active: Optional[bool] = None
+    is_deleted: Optional[bool] = None
 
 class SubscriptionPackageCreate(BaseModel):
     name: str
@@ -37,4 +37,4 @@ class SubscriptionPackageOut(BaseModel):
     max_stalls: int
     max_audio_storage: int
     features: Optional[str]
-    is_active: bool
+    is_deleted: bool

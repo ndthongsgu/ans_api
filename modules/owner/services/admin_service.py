@@ -14,8 +14,8 @@ class OwnerService:
     def list_owners(self, filters: dict, page: int, size: int, sortBy: str | None = None, sortDirection: str | None = None) -> Tuple[int, List[Owner]]:
         q = self.db.query(Owner).join(User)
         
-        if filters.get('name'):
-            q = q.filter(Owner.full_name.ilike(f"%{filters['name']}%"))
+        if filters.get('full_name'):
+            q = q.filter(Owner.full_name.ilike(f"%{filters['full_name']}%"))
             
         if filters.get('email'):
             q = q.filter(User.email.ilike(f"%{filters['email']}%"))
@@ -24,10 +24,7 @@ class OwnerService:
             q = q.filter(Owner.phone.ilike(f"%{filters['phone']}%"))
             
         if filters.get('isDeleted') is not None:
-            if filters['isDeleted']:
-                q = q.filter(User.is_active == False)
-            else:
-                q = q.filter(User.is_active == True)
+            q = q.filter(User.is_deleted == filters['isDeleted'])
                 
         # Ordering
         if sortBy:
@@ -70,7 +67,7 @@ class OwnerService:
         # Create owner profile
         owner = Owner(
             user_id=user.id,
-            full_name=data['name'],
+            full_name=data['full_name'],
             phone=data.get('phone'),
             business_name=data.get('business_name'),
             business_address=data.get('business_address'),
@@ -97,7 +94,7 @@ class OwnerService:
             user.username = data['email']
             
         # Update owner fields
-        owner.full_name = data['name']
+        owner.full_name = data['full_name']
         owner.phone = data.get('phone')
         owner.business_name = data.get('business_name')
         owner.business_address = data.get('business_address')
@@ -109,19 +106,19 @@ class OwnerService:
     def deactivate_owner(self, owner_id: str):
         owner = self.get_owner(owner_id)
         if owner and owner.user:
-            owner.user.is_active = False
+            owner.user.is_deleted = True
             self.db.commit()
         return owner
 
     def activate_owner(self, owner_id: str):
         owner = self.get_owner(owner_id)
         if owner and owner.user:
-            owner.user.is_active = True
+            owner.user.is_deleted = False
             self.db.commit()
         return owner
 
     def list_all_active(self):
-        return self.db.query(Owner).join(User).filter(User.is_active == True).all()
+        return self.db.query(Owner).join(User).filter(User.is_deleted == False).all()
 
     def list_for_select(self):
         """Return owners formatted for select dropdown"""

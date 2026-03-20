@@ -34,7 +34,7 @@ def paginate(req: CustomerPageRequest, current_user: User = Depends(get_current_
             "name": c.full_name,
             "email": c.user.email if c.user else None,
             "phone": c.phone,
-            "is_active": not (c.user.is_deleted if c.user else True),
+            "is_deleted": c.user.is_deleted if c.user else True,
             "roles": [r.code for r in c.user.roles] if c.user else [],
         })
     return {"content": results, "totalElements": total}
@@ -86,7 +86,7 @@ def detail(customer_id: str, current_user: User = Depends(get_current_user), db:
         "name": c.full_name,
         "email": c.user.email if c.user else None,
         "phone": c.phone,
-        "is_active": c.user.is_active if c.user else False,
+        "is_deleted": c.user.is_deleted if c.user else True,
         "roles": [r.code for r in c.user.roles] if c.user else [],
     }
 

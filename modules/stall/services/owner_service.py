@@ -99,7 +99,7 @@ class OwnerStallService:
 			audioFileSize=content.audio_file_size,
 			ttsScript=content.tts_script,
 			version=content.version,
-			isActive=bool(content.is_active),
+			isActive=not content.is_deleted,
 			createdAt=content.created_at,
 			updatedAt=content.updated_at,
 		)
@@ -240,7 +240,7 @@ class OwnerStallService:
 			audio_file_size=payload.audioFileSize,
 			tts_script=payload.ttsScript,
 			version=payload.version,
-			is_active=payload.isActive,
+			is_deleted=not payload.isActive,
 			created_at=now,
 			updated_at=now,
 		)
@@ -287,7 +287,7 @@ class OwnerStallService:
 		if "version" in changes:
 			content.version = changes["version"]
 		if "isActive" in changes:
-			content.is_active = changes["isActive"]
+			content.is_deleted = not changes["isActive"]
 
 		content.updated_at = int(time.time())
 		self.db.commit()

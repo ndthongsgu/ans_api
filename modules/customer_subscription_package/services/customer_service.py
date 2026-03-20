@@ -16,7 +16,7 @@ class SubscriptionService:
     def list_packages(self, active_only: bool = True):
         q = self.db.query(CustomerSubscriptionPackage)
         if active_only:
-            q = q.filter(CustomerSubscriptionPackage.is_active == True)
+            q = q.filter(CustomerSubscriptionPackage.is_deleted == False)
         return q.all()
 
     def get_package(self, package_id: str):
@@ -24,7 +24,7 @@ class SubscriptionService:
 
     def purchase_package(self, user_id: str, package_id: str):
         pkg = self.get_package(package_id)
-        if not pkg or not pkg.is_active:
+        if not pkg or pkg.is_deleted:
             raise ServiceError('package_not_found')
 
         customer = self.db.query(Customer).filter(Customer.user_id == user_id).first()

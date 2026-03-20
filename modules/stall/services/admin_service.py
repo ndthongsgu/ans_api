@@ -16,8 +16,8 @@ class StallService:
         if filters.get('owner_id'):
             q = q.filter(Stall.owner_id == filters['owner_id'])
             
-        if filters.get('status') is not None:
-            q = q.filter(Stall.status == filters['status'])
+        if filters.get('is_deleted') is not None:
+            q = q.filter(Stall.is_deleted == filters['is_deleted'])
             
         if filters.get('category'):
             q = q.filter(Stall.category.ilike(f"%{filters['category']}%"))
@@ -39,14 +39,21 @@ class StallService:
         return self.db.query(Stall).filter(Stall.id == stall_id).first()
 
     def create_stall(self, data: dict):
+        # Validate coordinates
+        try:
+            latitude = float(data['latitude'])
+            longitude = float(data['longitude'])
+        except (ValueError, TypeError):
+            raise RuntimeError("Vĩ độ và kinh độ phải là số")
+        
         stall = Stall(
             owner_id=data['owner_id'],
             name=data['name'],
-            latitude=data['latitude'],
-            longitude=data['longitude'],
-            radius=data.get('radius', 50),
+            latitude=latitude,
+            longitude=longitude,
+            radius=int(data.get('radius', 50)),
             cover_image=data.get('cover_image'),
-            status=True,
+            is_deleted=False,
             category=data.get('category'),
             price_range=data.get('price_range'),
             opening_hours=data.get('opening_hours'),
@@ -63,12 +70,26 @@ class StallService:
         stall = self.get_stall(stall_id)
         if not stall:
             return None
+        
+        # Validate new owner_id if provided
+        if data.get('owner_id'):
+            from models.owner import Owner
+            owner = self.db.query(Owner).filter(Owner.id == data['owner_id']).first()
+            if not owner:
+                raise RuntimeError(f"Chủ quán với ID {data['owner_id']} không tìm thấy")
+            stall.owner_id = data['owner_id']
+        
+        # Validate coordinates
+        try:
+            latitude = float(data['latitude'])
+            longitude = float(data['longitude'])
+        except (ValueError, TypeError):
+            raise RuntimeError("Vĩ độ và kinh độ phải là số")
             
-        stall.owner_id = data['owner_id']
         stall.name = data['name']
-        stall.latitude = data['latitude']
-        stall.longitude = data['longitude']
-        stall.radius = data.get('radius', 50)
+        stall.latitude = latitude
+        stall.longitude = longitude
+        stall.radius = int(data.get('radius', 50))
         stall.cover_image = data.get('cover_image')
         stall.category = data.get('category')
         stall.price_range = data.get('price_range')
@@ -83,19 +104,19 @@ class StallService:
     def deactivate_stall(self, stall_id: str):
         stall = self.get_stall(stall_id)
         if stall:
-            stall.status = False
+            stall.is_deleted = True
             self.db.commit()
         return stall
 
     def activate_stall(self, stall_id: str):
         stall = self.get_stall(stall_id)
         if stall:
-            stall.status = True
+            stall.is_deleted = False
             self.db.commit()
         return stall
 
     def list_all_active(self):
-        return self.db.query(Stall).filter(Stall.status == True).all()
+        return self.db.query(Stall).filter(Stall.is_deleted == False).all()
 
     def list_for_select(self):
         """Return stalls formatted for select dropdown"""

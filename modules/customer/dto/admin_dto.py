@@ -11,7 +11,7 @@ class CustomerPageRequest(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
-    isDeleted: Optional[bool] = None
+    is_deleted: Optional[bool] = None
     customerTypeId: Optional[str] = None
 
 class CustomerCreate(BaseModel):
@@ -38,4 +38,4 @@ class CustomerOut(BaseModel):
     email: EmailStr
     phone: Optional[str]
     description: Optional[str]
-    is_active: bool
+    is_deleted: bool

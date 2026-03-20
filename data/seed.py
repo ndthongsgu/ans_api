@@ -24,7 +24,7 @@ def seed_admin():
         # ensure ADMIN role exists
         role = db.query(Role).filter(Role.code == "ADMIN").first()
         if not role:
-            role = Role(code="ADMIN", name="Administrator")
+            role = Role(code="ADMIN", name="Administrator", description="Full access to all resources", created_at=int(time.time()), updated_at=int(time.time()), is_deleted=False)
             db.add(role)
             db.commit()
             db.refresh(role)
@@ -42,7 +42,10 @@ def seed_admin():
                 email=admin_email,
                 password_hash=hash_password(admin_password),
                 created_at=int(time.time()),
+                updated_at=int(time.time()),
+                is_deleted=False
             )
+
             db.add(user)
             db.commit()
             db.refresh(user)
@@ -52,7 +55,7 @@ def seed_admin():
             db.commit()
             print(f"admin user created ({admin_email}) with password '{admin_password}'")
         else:
-            print("admin user alread exists in database")
+            print("admin user already exists in database")
     finally:
         db.close()
 

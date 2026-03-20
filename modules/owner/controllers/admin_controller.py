@@ -36,8 +36,9 @@ def paginate(req: OwnerPageRequest, current_user: User = Depends(get_current_use
             "phone": o.phone,
             "business_name": o.business_name,
             "business_address": o.business_address,
-            "is_active": not (o.user.is_deleted if o.user else True),
+            "is_deleted": o.user.is_deleted if o.user else True,
             "roles": [r.code for r in o.user.roles] if o.user else [],
+            "created_at": o.created_at,
         })
     return {"content": results, "totalElements": total}
 
@@ -90,8 +91,9 @@ def detail(owner_id: str, current_user: User = Depends(get_current_user), db: Se
         "phone": o.phone,
         "business_name": o.business_name,
         "business_address": o.business_address,
-        "is_active": not (o.user.is_deleted if o.user else True),
+        "is_deleted": o.user.is_deleted if o.user else True,
         "roles": [r.code for r in o.user.roles] if o.user else [],
+        "created_at": o.created_at,
     }
 
 @router.post("/deactivate/{owner_id}")

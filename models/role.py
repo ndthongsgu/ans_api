@@ -9,6 +9,7 @@ class Role(BaseModel):
 
     code = Column(String(50), unique=True, nullable=False)  # ADMIN, STAFF, OWNER, USER
     name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
 
     permissions = Column(Text, nullable=True)  # JSON or comma-separated permissions
 

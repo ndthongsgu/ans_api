@@ -17,7 +17,6 @@ class Stall(BaseModel):
 
     radius = Column(Integer, default=50)
     cover_image = Column(String(500))
-    status = Column(Boolean, default=True)
     category = Column(String(100))
     price_range = Column(String(20))
     opening_hours = Column(Text)

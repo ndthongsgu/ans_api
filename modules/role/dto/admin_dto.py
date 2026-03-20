@@ -18,6 +18,7 @@ class RoleCreate(BaseModel):
 class RoleUpdate(BaseModel):
     code: str
     name: str
+    description: Optional[str] = None
     permissions: Optional[str] = None
 
 class RoleOut(BaseModel):

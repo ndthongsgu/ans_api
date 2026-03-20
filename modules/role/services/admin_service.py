@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from models.role import Role
 from typing import Tuple, List
+import time
 
 class RoleService:
     def __init__(self, db: Session):
@@ -35,11 +36,16 @@ class RoleService:
         # Check existing code
         if self.db.query(Role).filter(Role.code == data['code']).first():
             raise RuntimeError('code_exists')
-            
+        
+        current_time = int(time.time())
         role = Role(
             code=data['code'],
             name=data['name'],
-            permissions=data.get('permissions')
+            permissions=data.get('permissions'),
+            created_at=current_time,
+            updated_at=current_time,
+            created_by=data.get('created_by'),
+            is_deleted=False
         )
         self.db.add(role)
         self.db.commit()
@@ -59,6 +65,9 @@ class RoleService:
         role.code = data['code']
         role.name = data['name']
         role.permissions = data.get('permissions')
+        role.description = data.get('description')
+        role.updated_at = int(time.time())
+        role.updated_by = data.get('updated_by')
         
         self.db.commit()
         return role
@@ -66,13 +75,17 @@ class RoleService:
     def deactivate_role(self, role_id: str):
         role = self.get_role(role_id)
         if role:
-            # For roles, deactivation might not be applicable, but perhaps set permissions to empty or something
-            # Since no is_active, maybe just return
-            pass
+            role.is_deleted = True
+            role.updated_at = int(time.time())
+            self.db.commit()
         return role
 
     def activate_role(self, role_id: str):
-        # Similar to deactivate
+        role = self.get_role(role_id)
+        if role:
+            role.is_deleted = False
+            role.updated_at = int(time.time())
+            self.db.commit()
         return self.get_role(role_id)
 
     def list_all_active(self):

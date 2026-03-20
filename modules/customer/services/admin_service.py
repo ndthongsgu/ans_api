@@ -24,11 +24,8 @@ class CustomerService:
         if filters.get('phone'):
             q = q.filter(Customer.phone.ilike(f"%{filters['phone']}%"))
             
-        if filters.get('isDeleted') is not None:
-            if filters['isDeleted']:
-                q = q.filter(User.is_active == False)
-            else:
-                q = q.filter(User.is_active == True)
+        if filters.get('is_deleted') is not None:
+            q = q.filter(User.is_deleted == filters['is_deleted'])
                 
         if filters.get('customerTypeId'):
             # Adjust based on your Customer model relationship
@@ -109,14 +106,14 @@ class CustomerService:
     def deactivate_customer(self, customer_id: str):
         customer = self.get_customer(customer_id)
         if customer and customer.user:
-            customer.user.is_active = False
+            customer.user.is_deleted = True
             self.db.commit()
         return customer
 
     def activate_customer(self, customer_id: str):
         customer = self.get_customer(customer_id)
         if customer and customer.user:
-            customer.user.is_active = True
+            customer.user.is_deleted = False
             self.db.commit()
         return customer
 
@@ -141,7 +138,7 @@ class CustomerService:
         return True
 
     def list_all_active(self):
-        return self.db.query(Customer).join(User).filter(User.is_active == True).all()
+        return self.db.query(Customer).join(User).filter(User.is_deleted == False).all()
 
     def list_for_select(self):
         """Return customers formatted for select dropdown"""

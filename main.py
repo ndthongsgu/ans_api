@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from api.v1.admin import router as admin_router
 from api.v1.owner import router as owner_router
 from api.v1.customer import router as customer_router
+from modules.actionLog.controllers.admin_controller import router as action_log_router
 from core.database import engine, Base
 
 # Create tables
@@ -23,6 +24,7 @@ app.add_middleware(
 app.include_router(admin_router, prefix="/admin")
 app.include_router(owner_router, prefix="/owner")
 app.include_router(customer_router, prefix="/customer")
+app.include_router(action_log_router)
 
 # Global exception handler for HTTPException
 @app.exception_handler(HTTPException)

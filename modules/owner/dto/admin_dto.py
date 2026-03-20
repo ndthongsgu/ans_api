@@ -7,13 +7,13 @@ class OwnerPageRequest(BaseModel):
     sortBy: Optional[str] = None
     sortDirection: Optional[str] = "DESC"
     # filters
-    name: Optional[str] = None
+    full_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
     isDeleted: Optional[bool] = None
 
 class OwnerCreate(BaseModel):
-    name: str
+    full_name: str
     email: EmailStr
     phone: Optional[str] = None
     password: str
@@ -22,7 +22,7 @@ class OwnerCreate(BaseModel):
     subscription_package_id: Optional[str] = None
 
 class OwnerUpdate(BaseModel):
-    name: str
+    full_name: str
     email: EmailStr
     phone: Optional[str] = None
     business_name: Optional[str] = None
@@ -31,9 +31,9 @@ class OwnerUpdate(BaseModel):
 
 class OwnerOut(BaseModel):
     id: str
-    name: str
+    full_name: str
     email: EmailStr
     phone: Optional[str]
     business_name: Optional[str]
     business_address: Optional[str]
-    is_active: bool
+    is_deleted: bool

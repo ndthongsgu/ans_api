@@ -163,26 +163,4 @@ class Permission: List[Dict] = [
         "module": "EMPLOYEE",
         "label": "Xóa nhân viên"
     },
-
-    # ===== STAFF =====
-    {
-        "code": PermissionCode.STAFF_VIEW,
-        "module": "STAFF",
-        "label": "Xem nhân viên"
-    },
-    {
-        "code": PermissionCode.STAFF_CREATE,
-        "module": "STAFF",
-        "label": "Tạo nhân viên"
-    },
-    {
-        "code": PermissionCode.STAFF_UPDATE,
-        "module": "STAFF",
-        "label": "Cập nhật nhân viên"
-    },
-    {
-        "code": PermissionCode.STAFF_DELETE,
-        "module": "STAFF",
-        "label": "Xóa nhân viên"
-    },
 ]

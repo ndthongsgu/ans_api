@@ -38,7 +38,7 @@ def paginate(req: SubscriptionPackagePageRequest, current_user: User = Depends(g
             "max_stalls": p.max_stalls,
             "max_audio_storage": p.max_audio_storage,
             "features": p.features,
-            "is_active": not p.is_deleted,
+            "is_deleted": p.is_deleted,
         })
     return {"content": results, "totalElements": total}
 
@@ -93,7 +93,7 @@ def detail(package_id: str, current_user: User = Depends(get_current_user), db: 
         "max_stalls": p.max_stalls,
         "max_audio_storage": p.max_audio_storage,
         "features": p.features,
-        "is_active": not p.is_deleted,
+        "is_deleted": p.is_deleted,
     }
 
 @router.post("/deactivate/{package_id}")

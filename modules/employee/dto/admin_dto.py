@@ -11,7 +11,7 @@ class EmployeePageRequest(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
-    isDeleted: Optional[bool] = None
+    is_deleted: Optional[bool] = None
     roleIds: Optional[List[str]] = None
     roleFilterMode: Optional[str] = None  # OR, AND, EXCLUDE
 
@@ -38,5 +38,5 @@ class EmployeeOut(BaseModel):
     email: EmailStr
     phone: Optional[str]
     description: Optional[str]
-    is_active: bool
+    is_deleted: bool
     roles: List[str]
