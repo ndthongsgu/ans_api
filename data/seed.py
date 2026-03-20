@@ -8,8 +8,6 @@ if ROOT not in sys.path:
 
 from core.database import SessionLocal
 from models.user import User
-from models.role import Role
-from models.userRole import UserRole
 from utils.security import hash_password
 import time
 
@@ -20,15 +18,6 @@ def seed_admin():
         admin_email = "admin@example.com"
         admin_username = "admin"
         admin_password = "admin123"  # You may change this in production
-
-        # ensure ADMIN role exists
-        role = db.query(Role).filter(Role.code == "ADMIN").first()
-        if not role:
-            role = Role(code="ADMIN", name="Administrator", description="Full access to all resources", created_at=int(time.time()), updated_at=int(time.time()), is_deleted=False)
-            db.add(role)
-            db.commit()
-            db.refresh(role)
-            print("created ADMIN role")
 
         # check for existing user by email or username
         user = (
@@ -43,16 +32,13 @@ def seed_admin():
                 password_hash=hash_password(admin_password),
                 created_at=int(time.time()),
                 updated_at=int(time.time()),
-                is_deleted=False
+                is_deleted=False,
+                is_admin=True
             )
 
             db.add(user)
             db.commit()
             db.refresh(user)
-
-            user_role = UserRole(user_id=user.id, role_id=role.id, code=role.code)
-            db.add(user_role)
-            db.commit()
             print(f"admin user created ({admin_email}) with password '{admin_password}'")
         else:
             print("admin user already exists in database")

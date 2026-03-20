@@ -63,8 +63,8 @@ def refresh(credentials: HTTPAuthorizationCredentials = Depends(security), db: S
 @router.get("/me")
 def me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     locale = accept_language
-    # ensure user has ADMIN role
-    if not any(r.code == "ADMIN" for r in current_user.roles):
+    # ensure user is admin
+    if not current_user.is_admin:
         raise HTTPException(status_code=403, detail=t('forbidden', locale))
     # return minimal user info
-    return {"id": current_user.id, "username": current_user.username, "email": current_user.email, "roles": [r.code for r in current_user.roles]}
+    return {"id": current_user.id, "username": current_user.username, "email": current_user.email, "is_admin": current_user.is_admin}

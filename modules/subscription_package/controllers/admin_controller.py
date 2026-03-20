@@ -15,9 +15,9 @@ from typing import List
 
 router = APIRouter(prefix="/subscription-packages")
 
-# Helper to check admin role
+# Helper to check if user is admin
 def ensure_admin(user: User, locale: str | None = None):
-    if not any(r.code == "ADMIN" for r in user.roles):
+    if not user.is_admin:
         raise HTTPException(status_code=403, detail=t('forbidden', locale))
 
 @router.post("/pagination")

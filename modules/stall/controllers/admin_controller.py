@@ -15,9 +15,9 @@ from typing import List
 
 router = APIRouter(prefix="/stalls")
 
-# Helper to check admin role
+# Helper to check if user is admin
 def ensure_admin(user: User, locale: str | None = None):
-    if not any(r.code == "ADMIN" for r in user.roles):
+    if not user.is_admin:
         raise HTTPException(status_code=403, detail=t('forbidden', locale))
 
 @router.post("/pagination")
@@ -32,6 +32,7 @@ def paginate(req: StallPageRequest, current_user: User = Depends(get_current_use
         results.append({
             "id": s.id,
             "owner_id": s.owner_id,
+            "owner_name": s.owner.full_name if s.owner else None,
             "name": s.name,
             "latitude": s.latitude,
             "longitude": s.longitude,

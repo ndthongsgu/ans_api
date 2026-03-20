@@ -15,8 +15,7 @@ class AdminService:
             return None
         if not verify_password(password, user.password_hash):
             return None
-        # check role membership
-        # user.roles is a list of UserRole objects with code attribute
-        if not any(r.code == "ADMIN" for r in user.roles):
+        # check if user is admin
+        if not user.is_admin:
             return None
         return user
