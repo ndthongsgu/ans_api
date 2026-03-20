@@ -1,13 +1,10 @@
 import uuid
-import time
 from sqlalchemy import Column, String, Integer, Boolean
-from core.database import Base
+from models.base import BaseModel
 
 
-class EmailVerification(Base):
+class EmailVerification(BaseModel):
     __tablename__ = "email_verifications"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     email = Column(String(255), index=True, nullable=False)
     username = Column(String(100), nullable=True)

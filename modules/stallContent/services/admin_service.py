@@ -17,7 +17,7 @@ class StallContentService:
             q = q.filter(StallContent.stall_id == filters['stall_id'])
             
         if filters.get('is_active') is not None:
-            q = q.filter(StallContent.is_active == filters['is_active'])
+            q = q.filter(StallContent.is_deleted == (not filters['is_active']))
                 
         # Ordering
         if sortBy:
@@ -47,7 +47,6 @@ class StallContentService:
             audio_file_size=data.get('audio_file_size'),
             tts_script=data.get('tts_script'),
             version=data.get('version', 1),
-            is_active=True,
             created_at=int(time.time())
         )
         self.db.add(content)
@@ -78,19 +77,19 @@ class StallContentService:
     def deactivate_stall_content(self, content_id: str):
         content = self.get_stall_content(content_id)
         if content:
-            content.is_active = False
+            content.is_deleted = True
             self.db.commit()
         return content
 
     def activate_stall_content(self, content_id: str):
         content = self.get_stall_content(content_id)
         if content:
-            content.is_active = True
+            content.is_deleted = False
             self.db.commit()
         return content
 
     def list_all_active(self):
-        return self.db.query(StallContent).filter(StallContent.is_active == True).all()
+        return self.db.query(StallContent).filter(StallContent.is_deleted == False).all()
 
     def list_for_select(self):
         """Return stall contents formatted for select dropdown"""

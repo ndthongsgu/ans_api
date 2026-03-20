@@ -41,7 +41,7 @@ def paginate(req: StallContentPageRequest, current_user: User = Depends(get_curr
             "audio_file_size": c.audio_file_size,
             "tts_script": c.tts_script,
             "version": c.version,
-            "is_active": c.is_active,
+            "is_active": not c.is_deleted,
         })
     return {"content": results, "totalElements": total}
 
@@ -66,7 +66,7 @@ def create(content: StallContentCreate, current_user: User = Depends(get_current
         c = service.create_stall_content(content.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('create_success', accept_language)}
+    return {"success": True, "message": "Tạo thành công", "statusCode": 201}
 
 @router.put("/{content_id}")
 def update(content_id: str, content: StallContentUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -75,10 +75,10 @@ def update(content_id: str, content: StallContentUpdate, current_user: User = De
     try:
         c = service.update_stall_content(content_id, content.dict())
         if not c:
-            raise HTTPException(status_code=404, detail=t('not_found', accept_language))
+            raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('update_success', accept_language)}
+    return {"success": True, "message": "Cập nhật thành công", "statusCode": 200}
 
 @router.get("/{content_id}")
 def detail(content_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -99,7 +99,7 @@ def detail(content_id: str, current_user: User = Depends(get_current_user), db: 
         "audio_file_size": c.audio_file_size,
         "tts_script": c.tts_script,
         "version": c.version,
-        "is_active": c.is_active,
+        "is_active": not c.is_deleted,
     }
 
 @router.post("/deactivate/{content_id}")
@@ -108,8 +108,8 @@ def deactivate(content_id: str, current_user: User = Depends(get_current_user), 
     service = StallContentService(db)
     c = service.deactivate_stall_content(content_id)
     if not c:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('deactivate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Ngưng hoạt động thành công", "statusCode": 200}
 
 @router.post("/activate/{content_id}")
 def activate(content_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -117,5 +117,5 @@ def activate(content_id: str, current_user: User = Depends(get_current_user), db
     service = StallContentService(db)
     c = service.activate_stall_content(content_id)
     if not c:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('activate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Kích hoạt thành công", "statusCode": 200}

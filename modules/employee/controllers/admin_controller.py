@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from core.database import get_db
-from modules.employee.services.admin_employee_service import EmployeeService
-from modules.employee.dto.admin_employee_dto import (
+from modules.employee.services.admin_service import EmployeeService
+from modules.employee.dto.admin_dto import (
     EmployeePageRequest,
     EmployeeCreate,
     EmployeeUpdate,
-    EmployeeOut,
 )
 from modules.auth.controllers.admin_controller import get_current_user
 from models.user import User
 from utils.i18n import t
+from common.dto.response import SuccessResponse
 from typing import List
 
 router = APIRouter(prefix="/employees")
@@ -36,19 +36,19 @@ def paginate(req: EmployeePageRequest, current_user: User = Depends(get_current_
             "email": e.user.email if e.user else None,
             "phone": e.phone,
             "description": e.description,
-            "is_active": e.is_active,
+            "is_active": not e.is_deleted,
             "roles": [r.code for r in e.user.roles] if e.user else [],
         })
     return {"content": results, "totalElements": total}
 
-@router.get("/")
+@router.get("")
 def get_all(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = EmployeeService(db)
     emps = service.list_all_active()
     return [{"id": e.id, "code": e.code, "name": e.full_name} for e in emps]
 
-@router.post("/")
+@router.post("")
 def create(emp: EmployeeCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = EmployeeService(db)
@@ -56,7 +56,11 @@ def create(emp: EmployeeCreate, current_user: User = Depends(get_current_user), 
         e = service.create_employee(emp.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('create_success', accept_language)}
+    return {
+        "success": True,
+        "message": "Tạo thành công",
+        "statusCode": 201
+    }
 
 @router.put("/{emp_id}")
 def update(emp_id: str, emp: EmployeeUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -65,10 +69,14 @@ def update(emp_id: str, emp: EmployeeUpdate, current_user: User = Depends(get_cu
     try:
         e = service.update_employee(emp_id, emp.dict())
         if not e:
-            raise HTTPException(status_code=404, detail=t('not_found', accept_language))
+            raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('update_success', accept_language)}
+    return {
+        "success": True,
+        "message": "Cập nhật thành công",
+        "statusCode": 200
+    }
 
 @router.get("/{emp_id}")
 def detail(emp_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -84,7 +92,7 @@ def detail(emp_id: str, current_user: User = Depends(get_current_user), db: Sess
         "email": e.user.email if e.user else None,
         "phone": e.phone,
         "description": e.description,
-        "is_active": e.is_active,
+        "is_active": not e.is_deleted,
         "roles": [r.code for r in e.user.roles] if e.user else [],
     }
 
@@ -94,8 +102,12 @@ def deactivate(emp_id: str, current_user: User = Depends(get_current_user), db: 
     service = EmployeeService(db)
     e = service.deactivate_employee(emp_id)
     if not e:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('deactivate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {
+        "success": True,
+        "message": "Ngưng hoạt động thành công",
+        "statusCode": 200
+    }
 
 @router.post("/activate/{emp_id}")
 def activate(emp_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -103,8 +115,12 @@ def activate(emp_id: str, current_user: User = Depends(get_current_user), db: Se
     service = EmployeeService(db)
     e = service.activate_employee(emp_id)
     if not e:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('activate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {
+        "success": True,
+        "message": "Kích hoạt thành công",
+        "statusCode": 200
+    }
 
 @router.get("/select")
 def select(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):

@@ -69,7 +69,7 @@ def create(stall: StallCreate, current_user: User = Depends(get_current_user), d
         s = service.create_stall(stall.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('create_success', accept_language)}
+    return {"success": True, "message": "Tạo thành công", "statusCode": 201}
 
 @router.put("/{stall_id}")
 def update(stall_id: str, stall: StallUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -78,10 +78,10 @@ def update(stall_id: str, stall: StallUpdate, current_user: User = Depends(get_c
     try:
         s = service.update_stall(stall_id, stall.dict())
         if not s:
-            raise HTTPException(status_code=404, detail=t('not_found', accept_language))
+            raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('update_success', accept_language)}
+    return {"success": True, "message": "Cập nhật thành công", "statusCode": 200}
 
 @router.get("/{stall_id}")
 def detail(stall_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -114,8 +114,8 @@ def deactivate(stall_id: str, current_user: User = Depends(get_current_user), db
     service = StallService(db)
     s = service.deactivate_stall(stall_id)
     if not s:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('deactivate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Ngưng hoạt động thành công", "statusCode": 200}
 
 @router.post("/activate/{stall_id}")
 def activate(stall_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -123,5 +123,5 @@ def activate(stall_id: str, current_user: User = Depends(get_current_user), db: 
     service = StallService(db)
     s = service.activate_stall(stall_id)
     if not s:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('activate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Kích hoạt thành công", "statusCode": 200}

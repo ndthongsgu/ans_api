@@ -36,7 +36,7 @@ def paginate(req: OwnerPageRequest, current_user: User = Depends(get_current_use
             "phone": o.phone,
             "business_name": o.business_name,
             "business_address": o.business_address,
-            "is_active": o.user.is_active if o.user else False,
+            "is_active": not (o.user.is_deleted if o.user else True),
             "roles": [r.code for r in o.user.roles] if o.user else [],
         })
     return {"content": results, "totalElements": total}
@@ -62,7 +62,7 @@ def create(owner: OwnerCreate, current_user: User = Depends(get_current_user), d
         o = service.create_owner(owner.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('create_success', accept_language)}
+    return {"success": True, "message": "Tạo thành công", "statusCode": 201}
 
 @router.put("/{owner_id}")
 def update(owner_id: str, owner: OwnerUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -71,10 +71,10 @@ def update(owner_id: str, owner: OwnerUpdate, current_user: User = Depends(get_c
     try:
         o = service.update_owner(owner_id, owner.dict())
         if not o:
-            raise HTTPException(status_code=404, detail=t('not_found', accept_language))
+            raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('update_success', accept_language)}
+    return {"success": True, "message": "Cập nhật thành công", "statusCode": 200}
 
 @router.get("/{owner_id}")
 def detail(owner_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -90,7 +90,7 @@ def detail(owner_id: str, current_user: User = Depends(get_current_user), db: Se
         "phone": o.phone,
         "business_name": o.business_name,
         "business_address": o.business_address,
-        "is_active": o.user.is_active if o.user else False,
+        "is_active": not (o.user.is_deleted if o.user else True),
         "roles": [r.code for r in o.user.roles] if o.user else [],
     }
 
@@ -100,8 +100,8 @@ def deactivate(owner_id: str, current_user: User = Depends(get_current_user), db
     service = OwnerService(db)
     o = service.deactivate_owner(owner_id)
     if not o:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('deactivate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Ngưng hoạt động thành công", "statusCode": 200}
 
 @router.post("/activate/{owner_id}")
 def activate(owner_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -109,5 +109,5 @@ def activate(owner_id: str, current_user: User = Depends(get_current_user), db: 
     service = OwnerService(db)
     o = service.activate_owner(owner_id)
     if not o:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('activate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Kích hoạt thành công", "statusCode": 200}

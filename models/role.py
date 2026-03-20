@@ -1,15 +1,12 @@
-import uuid
 from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, Text,
-    ForeignKey, Numeric
+    Column, String, Text, Boolean
 )
 from sqlalchemy.orm import relationship
-from core.database import Base
+from models.base import BaseModel
 
-class Role(Base):
+class Role(BaseModel):
     __tablename__ = "roles"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     code = Column(String(50), unique=True, nullable=False)  # ADMIN, STAFF, OWNER, USER
     name = Column(String(100), nullable=False)
 

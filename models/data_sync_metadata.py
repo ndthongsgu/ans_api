@@ -1,13 +1,11 @@
-import uuid
 from sqlalchemy import (
     Column, String, Integer, Index
 )
-from core.database import Base
+from models.base import BaseModel
 
-class DataSyncMetadata(Base):
+class DataSyncMetadata(BaseModel):
     __tablename__ = "data_sync_metadata"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     table_name = Column(String(50), nullable=False)
     last_sync_version = Column(String(64), nullable=False)
     last_updated_at = Column(Integer, nullable=False)

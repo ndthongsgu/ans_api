@@ -1,13 +1,11 @@
-import uuid
 from sqlalchemy import (
     Column, String, Integer, Boolean, Index, ForeignKey
 )
-from core.database import Base
+from models.base import BaseModel
 
-class AudioPlaybackRule(Base):
+class AudioPlaybackRule(BaseModel):
     __tablename__ = "audio_playback_rules"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     stall_id = Column(String(36), ForeignKey("stalls.id"), nullable=False)
     priority = Column(Integer, default=0)
     cooldown_seconds = Column(Integer, default=900)

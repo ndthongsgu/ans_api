@@ -1,16 +1,13 @@
-import uuid
 from sqlalchemy import (
     Column, String, Boolean, Integer,
-    ForeignKey, Index
+    ForeignKey
 )
-from sqlalchemy.orm import relationship, declarative_base
-from core.database import Base
+from sqlalchemy.orm import relationship
+from models.base import BaseModel
 
 
-class Customer(Base):
+class Customer(BaseModel):
     __tablename__ = "customers"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     user_id = Column(String(36), ForeignKey("users.id"), unique=True)
     full_name = Column(String(255), nullable=False)

@@ -60,8 +60,7 @@ class CustomerService:
             username=data['email'],
             email=data['email'],
             password_hash=hash_password(data['password']),
-            created_at=int(time.time()),
-            is_active=True
+            created_at=int(time.time())
         )
         self.db.add(user)
         self.db.commit()
@@ -78,7 +77,8 @@ class CustomerService:
             user_id=user.id,
             full_name=data['name'],
             phone=data.get('phone'),
-            notification_enabled=True
+            notification_enabled=True,
+            created_at=int(time.time())
         )
         self.db.add(customer)
         self.db.commit()

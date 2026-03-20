@@ -1,14 +1,12 @@
-import uuid
 from sqlalchemy import (
     Column, String, Integer, Text, Boolean, Index, ForeignKey
 )
 from sqlalchemy import JSON
-from core.database import Base
+from models.base import BaseModel
 
-class Notification(Base):
+class Notification(BaseModel):
     __tablename__ = "notifications"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)

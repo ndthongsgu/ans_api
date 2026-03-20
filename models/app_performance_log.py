@@ -1,13 +1,11 @@
-import uuid
 from sqlalchemy import (
     Column, String, Integer, Float, Text, Index, ForeignKey
 )
-from core.database import Base
+from models.base import BaseModel
 
-class AppPerformanceLog(Base):
+class AppPerformanceLog(BaseModel):
     __tablename__ = "app_performance_logs"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     device_model = Column(String(100), default=None)
     os_version = Column(String(50), default=None)

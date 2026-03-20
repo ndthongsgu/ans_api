@@ -17,6 +17,9 @@ class LoginRequest(BaseModel):
             values['username'] = email
         return values
 
+class RefreshRequest(BaseModel):
+    refreshToken: str
+
 class RegisterRequest(BaseModel):
     username: str | None = None
     email: EmailStr

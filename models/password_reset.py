@@ -1,13 +1,11 @@
-import uuid
 import time
+import uuid
 from sqlalchemy import Column, String, Integer, Boolean
-from core.database import Base
+from models.base import BaseModel
 
 
-class PasswordReset(Base):
+class PasswordReset(BaseModel):
     __tablename__ = "password_resets"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     email = Column(String(255), index=True, nullable=False)
     otp_code = Column(String(10), nullable=False)

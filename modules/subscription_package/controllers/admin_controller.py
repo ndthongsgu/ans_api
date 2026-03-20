@@ -38,7 +38,7 @@ def paginate(req: SubscriptionPackagePageRequest, current_user: User = Depends(g
             "max_stalls": p.max_stalls,
             "max_audio_storage": p.max_audio_storage,
             "features": p.features,
-            "is_active": p.is_active,
+            "is_active": not p.is_deleted,
         })
     return {"content": results, "totalElements": total}
 
@@ -63,7 +63,7 @@ def create(package: SubscriptionPackageCreate, current_user: User = Depends(get_
         p = service.create_subscription_package(package.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('create_success', accept_language)}
+    return {"success": True, "message": "Tạo thành công", "statusCode": 201}
 
 @router.put("/{package_id}")
 def update(package_id: str, package: SubscriptionPackageUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -72,10 +72,10 @@ def update(package_id: str, package: SubscriptionPackageUpdate, current_user: Us
     try:
         p = service.update_subscription_package(package_id, package.dict())
         if not p:
-            raise HTTPException(status_code=404, detail=t('not_found', accept_language))
+            raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('update_success', accept_language)}
+    return {"success": True, "message": "Cập nhật thành công", "statusCode": 200}
 
 @router.get("/{package_id}")
 def detail(package_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -93,7 +93,7 @@ def detail(package_id: str, current_user: User = Depends(get_current_user), db: 
         "max_stalls": p.max_stalls,
         "max_audio_storage": p.max_audio_storage,
         "features": p.features,
-        "is_active": p.is_active,
+        "is_active": not p.is_deleted,
     }
 
 @router.post("/deactivate/{package_id}")
@@ -102,8 +102,8 @@ def deactivate(package_id: str, current_user: User = Depends(get_current_user), 
     service = SubscriptionPackageService(db)
     p = service.deactivate_subscription_package(package_id)
     if not p:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('deactivate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Ngưng hoạt động thành công", "statusCode": 200}
 
 @router.post("/activate/{package_id}")
 def activate(package_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -111,5 +111,5 @@ def activate(package_id: str, current_user: User = Depends(get_current_user), db
     service = SubscriptionPackageService(db)
     p = service.activate_subscription_package(package_id)
     if not p:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('activate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Kích hoạt thành công", "statusCode": 200}

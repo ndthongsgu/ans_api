@@ -55,8 +55,7 @@ class OwnerService:
             username=data['email'],
             email=data['email'],
             password_hash=hash_password(data['password']),
-            created_at=int(time.time()),
-            is_active=True
+            created_at=int(time.time())
         )
         self.db.add(user)
         self.db.commit()
@@ -75,7 +74,8 @@ class OwnerService:
             phone=data.get('phone'),
             business_name=data.get('business_name'),
             business_address=data.get('business_address'),
-            subscription_package_id=data.get('subscription_package_id')
+            subscription_package_id=data.get('subscription_package_id'),
+            created_at=int(time.time())
         )
         self.db.add(owner)
         self.db.commit()

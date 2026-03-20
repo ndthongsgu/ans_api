@@ -24,9 +24,9 @@ class EmployeeService:
             q = q.filter(Employee.phone.ilike(f"%{filters['phone']}%"))
         if filters.get('isDeleted') is not None:
             if filters['isDeleted']:
-                q = q.filter(Employee.is_active == False)
+                q = q.filter(Employee.is_deleted == True)
             else:
-                q = q.filter(Employee.is_active == True)
+                q = q.filter(Employee.is_deleted == False)
         # role filtering
         role_ids = filters.get('roleIds')
         if role_ids:
@@ -53,11 +53,12 @@ class EmployeeService:
             raise RuntimeError('email_exists')
         if self.db.query(Employee).filter(Employee.code == data['code']).first():
             raise RuntimeError('code_exists')
-        # create user
+        # create user with default password if not provided
+        password = data.get('password', 'Temp@123456')  # default temporary password
         user = User(
             username=data['email'],
             email=data['email'],
-            password_hash=hash_password(data['password']),
+            password_hash=hash_password(password),
             created_at=int(time.time())
         )
         self.db.add(user)
@@ -70,11 +71,11 @@ class EmployeeService:
             full_name=data['name'],
             phone=data.get('phone'),
             description=data.get('description'),
-            is_active=True
+            created_at=int(time.time())
         )
         self.db.add(emp)
         # add roles
-        for rid in data.get('roles', []):
+        for rid in data.get('roleIds', []):
             role = self.db.query(Role).filter(Role.id == rid).first()
             if role:
                 ur = UserRole(user_id=user.id, role_id=rid, code=role.code)
@@ -101,7 +102,7 @@ class EmployeeService:
         emp.description = data.get('description')
         # update roles: remove all then add
         self.db.query(UserRole).filter(UserRole.user_id == user.id).delete()
-        for rid in data.get('roles', []):
+        for rid in data.get('roleIds', []):
             role = self.db.query(Role).filter(Role.id == rid).first()
             if role:
                 ur = UserRole(user_id=user.id, role_id=rid, code=role.code)
@@ -112,20 +113,20 @@ class EmployeeService:
     def deactivate_employee(self, emp_id: str):
         emp = self.get_employee(emp_id)
         if emp:
-            emp.is_active = False
+            emp.is_deleted = True
             if emp.user:
-                emp.user.is_active = False
+                emp.user.is_deleted = True
             self.db.commit()
         return emp
 
     def activate_employee(self, emp_id: str):
         emp = self.get_employee(emp_id)
         if emp:
-            emp.is_active = True
+            emp.is_deleted = False
             if emp.user:
-                emp.user.is_active = True
+                emp.user.is_deleted = False
             self.db.commit()
         return emp
 
     def list_all_active(self):
-        return self.db.query(Employee).filter(Employee.is_active == True).all()
+        return self.db.query(Employee).filter(Employee.is_deleted == False).all()

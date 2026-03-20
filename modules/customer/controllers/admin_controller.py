@@ -34,7 +34,7 @@ def paginate(req: CustomerPageRequest, current_user: User = Depends(get_current_
             "name": c.full_name,
             "email": c.user.email if c.user else None,
             "phone": c.phone,
-            "is_active": c.user.is_active if c.user else False,
+            "is_active": not (c.user.is_deleted if c.user else True),
             "roles": [r.code for r in c.user.roles] if c.user else [],
         })
     return {"content": results, "totalElements": total}
@@ -60,7 +60,7 @@ def create(customer: CustomerCreate, current_user: User = Depends(get_current_us
         c = service.create_customer(customer.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('create_success', accept_language)}
+    return {"success": True, "message": "Tạo thành công", "statusCode": 201}
 
 @router.put("/{customer_id}")
 def update(customer_id: str, customer: CustomerUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -69,10 +69,10 @@ def update(customer_id: str, customer: CustomerUpdate, current_user: User = Depe
     try:
         c = service.update_customer(customer_id, customer.dict())
         if not c:
-            raise HTTPException(status_code=404, detail=t('not_found', accept_language))
+            raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('update_success', accept_language)}
+    return {"success": True, "message": "Cập nhật thành công", "statusCode": 200}
 
 @router.get("/{customer_id}")
 def detail(customer_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -96,8 +96,8 @@ def deactivate(customer_id: str, current_user: User = Depends(get_current_user),
     service = CustomerService(db)
     c = service.deactivate_customer(customer_id)
     if not c:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('deactivate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Ngưng hoạt động thành công", "statusCode": 200}
 
 @router.post("/activate/{customer_id}")
 def activate(customer_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -105,8 +105,8 @@ def activate(customer_id: str, current_user: User = Depends(get_current_user), d
     service = CustomerService(db)
     c = service.activate_customer(customer_id)
     if not c:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('activate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Kích hoạt thành công", "statusCode": 200}
 
 @router.delete("/{customer_id}")
 def delete(customer_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -114,5 +114,5 @@ def delete(customer_id: str, current_user: User = Depends(get_current_user), db:
     service = CustomerService(db)
     result = service.delete_customer(customer_id)
     if not result:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('delete_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Xóa thành công", "statusCode": 200}

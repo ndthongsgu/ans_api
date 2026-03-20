@@ -21,8 +21,7 @@ class EmployeeCreate(BaseModel):
     email: EmailStr
     phone: Optional[str] = None
     description: Optional[str] = None
-    roles: List[str]
-    password: str
+    roleIds: Optional[List[str]] = None
 
 class EmployeeUpdate(BaseModel):
     code: str
@@ -30,7 +29,7 @@ class EmployeeUpdate(BaseModel):
     email: EmailStr
     phone: Optional[str] = None
     description: Optional[str] = None
-    roles: List[str]
+    roleIds: Optional[List[str]] = None
 
 class EmployeeOut(BaseModel):
     id: str

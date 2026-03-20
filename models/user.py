@@ -1,23 +1,19 @@
-import uuid
 from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, Text,
-    ForeignKey, Numeric
+    Column, String, Integer, Boolean, Text,
+    ForeignKey
 )
 from sqlalchemy.orm import relationship
-from core.database import Base
+from models.base import BaseModel
 
 
-class User(Base):
+class User(BaseModel):
     __tablename__ = "users"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     username = Column(String(100), unique=True, nullable=True)
     email = Column(String(255), unique=True, nullable=True)
     password_hash = Column(String(255), nullable=True)
 
     preferred_language = Column(String(10), default="vi")
-    is_active = Column(Boolean, default=True)
 
     created_at = Column(Integer, nullable=False)
     last_sync_at = Column(Integer, nullable=True)

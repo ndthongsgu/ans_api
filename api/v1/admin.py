@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from modules.auth.controllers.admin_controller import router as auth_router
-from modules.employee.controllers.admin_employee_controller import router as employee_router
+from modules.employee.controllers.admin_controller import router as employee_router
 from modules.customer.controllers.admin_controller import router as customer_router
 from modules.role.controllers.admin_controller import router as role_router
 from modules.owner.controllers.admin_controller import router as owner_router

@@ -1,14 +1,12 @@
-import uuid
 from sqlalchemy import (
     Column, String, Integer, Text, Index, ForeignKey
 )
 from sqlalchemy import JSON
-from core.database import Base
+from models.base import BaseModel
 
-class PendingUpload(Base):
+class PendingUpload(BaseModel):
     __tablename__ = "pending_uploads"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     action_type = Column(String(50), nullable=False)
     payload = Column(JSON, nullable=False)

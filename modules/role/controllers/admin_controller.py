@@ -58,7 +58,7 @@ def create(role: RoleCreate, current_user: User = Depends(get_current_user), db:
         r = service.create_role(role.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('create_success', accept_language)}
+    return {"success": True, "message": "Tạo thành công", "statusCode": 201}
 
 @router.put("/{role_id}")
 def update(role_id: str, role: RoleUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -67,10 +67,10 @@ def update(role_id: str, role: RoleUpdate, current_user: User = Depends(get_curr
     try:
         r = service.update_role(role_id, role.dict())
         if not r:
-            raise HTTPException(status_code=404, detail=t('not_found', accept_language))
+            raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"message": t('update_success', accept_language)}
+    return {"success": True, "message": "Cập nhật thành công", "statusCode": 200}
 
 @router.get("/{role_id}")
 def detail(role_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -92,8 +92,8 @@ def deactivate(role_id: str, current_user: User = Depends(get_current_user), db:
     service = RoleService(db)
     r = service.deactivate_role(role_id)
     if not r:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('deactivate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Ngưng hoạt động thành công", "statusCode": 200}
 
 @router.post("/activate/{role_id}")
 def activate(role_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -101,5 +101,5 @@ def activate(role_id: str, current_user: User = Depends(get_current_user), db: S
     service = RoleService(db)
     r = service.activate_role(role_id)
     if not r:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {"message": t('activate_success', accept_language)}
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    return {"success": True, "message": "Kích hoạt thành công", "statusCode": 200}
