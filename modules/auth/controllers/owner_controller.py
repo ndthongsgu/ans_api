@@ -85,7 +85,6 @@ def me(
 			"phone": owner.phone,
 			"business_name": owner.business_name,
 			"business_address": owner.business_address,
-			"subscription_package_id": owner.subscription_package_id,
 			"subscription_expires_at": owner.subscription_expires_at,
 		},
 	}
@@ -119,7 +118,6 @@ def update_me(
 			"phone": owner.phone,
 			"business_name": owner.business_name,
 			"business_address": owner.business_address,
-			"subscription_package_id": owner.subscription_package_id,
 			"subscription_expires_at": owner.subscription_expires_at,
 		},
 	}

@@ -10,7 +10,7 @@ from modules.stallContent.dto.admin_dto import (
 )
 from modules.auth.controllers.admin_controller import get_current_user
 from models.user import User
-from utils.i18n import t
+from common.dto.response import success_response
 from typing import List
 
 router = APIRouter(prefix="/stall-contents")
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/stall-contents")
 # Helper to check if user is admin
 def ensure_admin(user: User, locale: str | None = None):
     if not user.is_admin:
-        raise HTTPException(status_code=403, detail=t('forbidden', locale))
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập")
 
 @router.post("/pagination")
 def paginate(req: StallContentPageRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -34,9 +34,6 @@ def paginate(req: StallContentPageRequest, current_user: User = Depends(get_curr
             "stall_id": c.stall_id,
             "stall_name": c.stall.name if c.stall else None,
             "language_code": c.language_code,
-            "title": c.title,
-            "description": c.description,
-            "short_description": c.short_description,
             "audio_url": c.audio_url,
             "audio_duration": c.audio_duration,
             "audio_file_size": c.audio_file_size,
@@ -44,30 +41,48 @@ def paginate(req: StallContentPageRequest, current_user: User = Depends(get_curr
             "version": c.version,
             "is_deleted": c.is_deleted,
         })
-    return {"content": results, "totalElements": total}
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data={"content": results, "totalElements": total}
+    )
 
 @router.get("/")
 def get_all(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = StallContentService(db)
     contents = service.list_all_active()
-    return [{"id": c.id, "title": c.title, "stall_id": c.stall_id} for c in contents]
+    data = [{"id": c.id, "stall_id": c.stall_id} for c in contents]
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.get("/select")
 def select(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = StallContentService(db)
-    return service.list_for_select()
+    data = service.list_for_select()
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.post("/")
 def create(content: StallContentCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = StallContentService(db)
     try:
+        # Validate that either audio_url or tts_script is provided
+        if not content.audio_url and not content.tts_script:
+            raise RuntimeError("Either audio_url or tts_script must be provided")
+        
         c = service.create_stall_content(content.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"success": True, "message": "Tạo thành công", "statusCode": 201}
+    return success_response(
+        message="Tạo nội dung cửa hàng thành công",
+        status_code=201
+    )
 
 @router.put("/{content_id}")
 def update(content_id: str, content: StallContentUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -79,7 +94,9 @@ def update(content_id: str, content: StallContentUpdate, current_user: User = De
             raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"success": True, "message": "Cập nhật thành công", "statusCode": 200}
+    return success_response(
+        message="Cập nhật nội dung cửa hàng thành công"
+    )
 
 @router.get("/{content_id}")
 def detail(content_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -87,8 +104,8 @@ def detail(content_id: str, current_user: User = Depends(get_current_user), db: 
     service = StallContentService(db)
     c = service.get_stall_content(content_id)
     if not c:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    data = {
         "id": c.id,
         "stall_id": c.stall_id,
         "stall": {
@@ -96,9 +113,6 @@ def detail(content_id: str, current_user: User = Depends(get_current_user), db: 
             "name": c.stall.name,
         } if c.stall else None,
         "language_code": c.language_code,
-        "title": c.title,
-        "description": c.description,
-        "short_description": c.short_description,
         "audio_url": c.audio_url,
         "audio_duration": c.audio_duration,
         "audio_file_size": c.audio_file_size,
@@ -108,6 +122,10 @@ def detail(content_id: str, current_user: User = Depends(get_current_user), db: 
         "created_at": c.created_at,
         "updated_at": c.updated_at,
     }
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.post("/deactivate/{content_id}")
 def deactivate(content_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -116,7 +134,9 @@ def deactivate(content_id: str, current_user: User = Depends(get_current_user), 
     c = service.deactivate_stall_content(content_id)
     if not c:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
-    return {"success": True, "message": "Ngưng hoạt động thành công", "statusCode": 200}
+    return success_response(
+        message="Ngưng hoạt động nội dung cửa hàng thành công"
+    )
 
 @router.post("/activate/{content_id}")
 def activate(content_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -125,4 +145,6 @@ def activate(content_id: str, current_user: User = Depends(get_current_user), db
     c = service.activate_stall_content(content_id)
     if not c:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
-    return {"success": True, "message": "Kích hoạt thành công", "statusCode": 200}
+    return success_response(
+        message="Kích hoạt nội dung cửa hàng thành công"
+    )

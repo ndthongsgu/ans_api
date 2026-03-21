@@ -10,7 +10,7 @@ from modules.stall.dto.admin_dto import (
 )
 from modules.auth.controllers.admin_controller import get_current_user
 from models.user import User
-from utils.i18n import t
+from common.dto.response import success_response
 from typing import List
 
 router = APIRouter(prefix="/stalls")
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/stalls")
 # Helper to check if user is admin
 def ensure_admin(user: User, locale: str | None = None):
     if not user.is_admin:
-        raise HTTPException(status_code=403, detail=t('forbidden', locale))
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập")
 
 @router.post("/pagination")
 def paginate(req: StallPageRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -47,20 +47,31 @@ def paginate(req: StallPageRequest, current_user: User = Depends(get_current_use
             "average_rating": s.average_rating,
             "total_reviews": s.total_reviews,
         })
-    return {"content": results, "totalElements": total}
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data={"content": results, "totalElements": total}
+    )
 
 @router.get("/")
 def get_all(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = StallService(db)
     stalls = service.list_all_active()
-    return [{"id": s.id, "name": s.name, "owner_id": s.owner_id} for s in stalls]
+    data = [{"id": s.id, "name": s.name, "owner_id": s.owner_id} for s in stalls]
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.get("/select")
 def select(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = StallService(db)
-    return service.list_for_select()
+    data = service.list_for_select()
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.post("/")
 def create(stall: StallCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -70,27 +81,27 @@ def create(stall: StallCreate, current_user: User = Depends(get_current_user), d
         s = service.create_stall(stall.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {
-        "success": True,
-        "message": "Tạo thành công",
-        "statusCode": 201,
-        "data": {
-            "id": s.id,
-            "owner_id": s.owner_id,
-            "name": s.name,
-            "latitude": s.latitude,
-            "longitude": s.longitude,
-            "radius": s.radius,
-            "is_deleted": s.is_deleted,
-            "cover_image": s.cover_image,
-            "category": s.category,
-            "price_range": s.price_range,
-            "opening_hours": s.opening_hours,
-            "contact_phone": s.contact_phone,
-            "website": s.website,
-            "created_at": s.created_at,
-        }
+    data = {
+        "id": s.id,
+        "owner_id": s.owner_id,
+        "name": s.name,
+        "latitude": s.latitude,
+        "longitude": s.longitude,
+        "radius": s.radius,
+        "is_deleted": s.is_deleted,
+        "cover_image": s.cover_image,
+        "category": s.category,
+        "price_range": s.price_range,
+        "opening_hours": s.opening_hours,
+        "contact_phone": s.contact_phone,
+        "website": s.website,
+        "created_at": s.created_at,
     }
+    return success_response(
+        message="Tạo cửa hàng thành công",
+        data=data,
+        status_code=201
+    )
 
 @router.put("/{stall_id}")
 def update(stall_id: str, stall: StallUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -102,7 +113,9 @@ def update(stall_id: str, stall: StallUpdate, current_user: User = Depends(get_c
             raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"success": True, "message": "Cập nhật thành công", "statusCode": 200}
+    return success_response(
+        message="Cập nhật cửa hàng thành công"
+    )
 
 @router.get("/{stall_id}")
 def detail(stall_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -110,8 +123,8 @@ def detail(stall_id: str, current_user: User = Depends(get_current_user), db: Se
     service = StallService(db)
     s = service.get_stall(stall_id)
     if not s:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    data = {
         "id": s.id,
         "owner_id": s.owner_id,
         "name": s.name,
@@ -132,6 +145,10 @@ def detail(stall_id: str, current_user: User = Depends(get_current_user), db: Se
             "full_name": s.owner.full_name,
         } if s.owner else None,
     }
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.post("/deactivate/{stall_id}")
 def deactivate(stall_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -140,7 +157,9 @@ def deactivate(stall_id: str, current_user: User = Depends(get_current_user), db
     s = service.deactivate_stall(stall_id)
     if not s:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
-    return {"success": True, "message": "Ngưng hoạt động thành công", "statusCode": 200}
+    return success_response(
+        message="Ngưng hoạt động cửa hàng thành công"
+    )
 
 @router.post("/activate/{stall_id}")
 def activate(stall_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -149,4 +168,6 @@ def activate(stall_id: str, current_user: User = Depends(get_current_user), db: 
     s = service.activate_stall(stall_id)
     if not s:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
-    return {"success": True, "message": "Kích hoạt thành công", "statusCode": 200}
+    return success_response(
+        message="Kích hoạt cửa hàng thành công"
+    )

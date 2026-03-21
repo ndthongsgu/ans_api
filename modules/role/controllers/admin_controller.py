@@ -10,8 +10,8 @@ from modules.role.dto.admin_dto import (
 )
 from modules.auth.controllers.admin_controller import get_current_user
 from models.user import User
-from utils.i18n import t
 from utils.action_log_helper import log_action
+from common.dto.response import success_response
 from typing import List
 
 router = APIRouter(prefix="/roles")
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/roles")
 # Helper to check if user is admin
 def ensure_admin(user: User, locale: str | None = None):
     if not user.is_admin:
-        raise HTTPException(status_code=403, detail=t('forbidden', locale))
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập")
 
 @router.post("/pagination")
 def paginate(req: RolePageRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -38,20 +38,31 @@ def paginate(req: RolePageRequest, current_user: User = Depends(get_current_user
             "description": r.description,
             "permissions": r.permissions,
         })
-    return {"content": results, "totalElements": total}
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data={"content": results, "totalElements": total}
+    )
 
 @router.get("/")
 def get_all(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = RoleService(db)
     roles = service.list_all_active()
-    return [{"id": r.id, "code": r.code, "name": r.name} for r in roles]
+    data = [{"id": r.id, "code": r.code, "name": r.name} for r in roles]
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.get("/select")
 def select(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = RoleService(db)
-    return service.list_for_select()
+    data = service.list_for_select()
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.post("/")
 def create(role: RoleCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), request: Request = None, accept_language: str | None = Header(None)):
@@ -73,7 +84,10 @@ def create(role: RoleCreate, current_user: User = Depends(get_current_user), db:
         )
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"success": True, "message": "Tạo thành công", "statusCode": 201}
+    return success_response(
+        message="Tạo vai trò thành công",
+        status_code=201
+    )
 
 @router.put("/{role_id}")
 def update(role_id: str, role: RoleUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), request: Request = None, accept_language: str | None = Header(None)):
@@ -110,7 +124,9 @@ def update(role_id: str, role: RoleUpdate, current_user: User = Depends(get_curr
         )
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"success": True, "message": "Cập nhật thành công", "statusCode": 200}
+    return success_response(
+        message="Cập nhật vai trò thành công"
+    )
 
 @router.get("/{role_id}")
 def detail(role_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -118,13 +134,17 @@ def detail(role_id: str, current_user: User = Depends(get_current_user), db: Ses
     service = RoleService(db)
     r = service.get_role(role_id)
     if not r:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    data = {
         "id": r.id,
         "code": r.code,
         "name": r.name,
         "permissions": r.permissions,
     }
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.post("/deactivate/{role_id}")
 def deactivate(role_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), request: Request = None, accept_language: str | None = Header(None)):
@@ -146,7 +166,9 @@ def deactivate(role_id: str, current_user: User = Depends(get_current_user), db:
         user_agent=request.headers.get("user-agent") if request else None,
     )
     
-    return {"success": True, "message": "Ngưng hoạt động thành công", "statusCode": 200}
+    return success_response(
+        message="Ngưng hoạt động vai trò thành công"
+    )
 
 @router.post("/activate/{role_id}")
 def activate(role_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), request: Request = None, accept_language: str | None = Header(None)):
@@ -168,4 +190,6 @@ def activate(role_id: str, current_user: User = Depends(get_current_user), db: S
         user_agent=request.headers.get("user-agent") if request else None,
     )
     
-    return {"success": True, "message": "Kích hoạt thành công", "statusCode": 200}
+    return success_response(
+        message="Kích hoạt vai trò thành công"
+    )

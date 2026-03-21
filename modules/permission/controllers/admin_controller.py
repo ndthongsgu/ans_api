@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from modules.auth.controllers.admin_controller import get_current_user
 from models.user import User
-from utils.i18n import t
 
 router = APIRouter(prefix="/permissions")
 
@@ -136,4 +135,4 @@ def get_module_permissions(
     for module in PERMISSION_MODULES:
         if module["module"] == module_code:
             return module
-    raise HTTPException(status_code=404, detail=t("not_found", accept_language))
+    raise HTTPException(status_code=404, detail="Không tìm thấy dữ liệu")
