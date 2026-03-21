@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
+from common.dto.response import success_response
 from core.database import get_db
 from modules.auth.controllers.admin_controller import get_current_user
 from models.user import User
@@ -121,7 +122,7 @@ def get_all_permission_modules(
     accept_language: str | None = Header(None),
 ):
     """Get all permission modules"""
-    return PERMISSION_MODULES
+    return success_response(data={"contents": PERMISSION_MODULES}, message="Lấy dữ liệu thành công")
 
 
 @router.get("/{module_code}")

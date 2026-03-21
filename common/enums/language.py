@@ -6,18 +6,18 @@ class LanguageCode:
         },
         {
             "code": "en",
-            "label": "Tiếng Anh"
+            "label": "English"
         },
         {
             "code": "zh",
-            "label": "Tiếng Trung"
+            "label": "中文"
         },
         {
             "code": "ja",
-            "label": "Tiếng Nhật"
+            "label": "日本語"
         },
         {
             "code": "ko",
-            "label": "Tiếng Hàn"
+            "label": "한국어"
         }
     ]

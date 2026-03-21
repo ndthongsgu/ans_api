@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
 from core.database import get_db
 from modules.stall.services.admin_service import StallService
 from modules.stall.dto.admin_dto import (
@@ -10,6 +11,7 @@ from modules.stall.dto.admin_dto import (
 )
 from modules.auth.controllers.admin_controller import get_current_user
 from models.user import User
+from models.stallTranslation import StallTranslation
 from common.dto.response import success_response
 from typing import List
 
@@ -29,23 +31,44 @@ def paginate(req: StallPageRequest, current_user: User = Depends(get_current_use
     # Convert to output
     results = []
     for s in items:
+        # Get all translations
+        translations = db.query(StallTranslation).filter(
+            StallTranslation.stall_id == s.id
+        ).all()
+        
+        # Get Vietnamese translation for primary display
+        vi_trans = next((t for t in translations if t.language_code == "vi"), None)
+        
         results.append({
             "id": s.id,
             "owner_id": s.owner_id,
             "owner_name": s.owner.full_name if s.owner else None,
-            "name": s.name,
+            "name": vi_trans.name if vi_trans else s.name,
+            "category": vi_trans.category if vi_trans else s.category,
             "latitude": s.latitude,
             "longitude": s.longitude,
             "radius": s.radius,
             "is_deleted": s.is_deleted,
             "cover_image": s.cover_image,
-            "category": s.category,
             "price_range": s.price_range,
             "opening_hours": s.opening_hours,
             "contact_phone": s.contact_phone,
             "website": s.website,
             "average_rating": s.average_rating,
             "total_reviews": s.total_reviews,
+            "vi_trans": {
+                "language_code": vi_trans.language_code,
+                "name": vi_trans.name,
+                "category": vi_trans.category,
+            } if vi_trans else None,
+            "translations": [
+                {
+                    "language_code": t.language_code,
+                    "name": t.name,
+                    "category": t.category,
+                }
+                for t in translations
+            ]
         })
     return success_response(
         message="Lấy dữ liệu thành công",
@@ -124,15 +147,24 @@ def detail(stall_id: str, current_user: User = Depends(get_current_user), db: Se
     s = service.get_stall(stall_id)
     if not s:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
+    
+    # Get all translations
+    translations = db.query(StallTranslation).filter(
+        StallTranslation.stall_id == s.id
+    ).all()
+    
+    # Get Vietnamese translation for primary display
+    vi_trans = next((t for t in translations if t.language_code == "vi"), None)
+    
     data = {
         "id": s.id,
         "owner_id": s.owner_id,
-        "name": s.name,
+        "name": vi_trans.name if vi_trans else s.name,
+        "category": vi_trans.category if vi_trans else s.category,
         "latitude": s.latitude,
         "longitude": s.longitude,
         "radius": s.radius,
         "cover_image": s.cover_image,
-        "category": s.category,
         "price_range": s.price_range,
         "opening_hours": s.opening_hours,
         "contact_phone": s.contact_phone,
@@ -144,6 +176,19 @@ def detail(stall_id: str, current_user: User = Depends(get_current_user), db: Se
             "id": s.owner.id,
             "full_name": s.owner.full_name,
         } if s.owner else None,
+        "vi_trans": {
+            "language_code": vi_trans.language_code,
+            "name": vi_trans.name,
+            "category": vi_trans.category,
+        } if vi_trans else None,
+        "translations": [
+            {
+                "language_code": t.language_code,
+                "name": t.name,
+                "category": t.category,
+            }
+            for t in translations
+        ]
     }
     return success_response(
         message="Lấy dữ liệu thành công",

@@ -34,3 +34,8 @@ class Stall(BaseModel):
         back_populates="stall",
         cascade="all, delete-orphan"
     )
+    translations = relationship(
+        "StallTranslation",
+        back_populates="stall",
+        cascade="all, delete-orphan"
+    )

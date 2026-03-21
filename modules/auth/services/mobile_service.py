@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from models.customer import Customer
 from models.user import User
-from modules.auth.dto.customer_dto import RegisterRequest, UserCreate
+from modules.auth.dto.mobile_dto import RegisterRequest, UserCreate
 from utils.security import hash_password, verify_password
 import time
 
@@ -12,7 +12,7 @@ class ServiceError(Exception):
         super().__init__(code)
 
 
-class CustomerService:
+class MobileService:
     def __init__(self, db: Session):
         self.db = db
 

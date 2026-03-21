@@ -2,7 +2,7 @@ import random
 import time
 from sqlalchemy.orm import Session
 from models.password_reset import PasswordReset
-from modules.auth.services.customer_service import CustomerService, ServiceError
+from modules.auth.services.mobile_service import MobileService, ServiceError
 from utils.email_util import send_email
 from utils.i18n import t
 from utils.security import hash_password
@@ -20,7 +20,7 @@ class PasswordResetError(Exception):
 class PasswordResetService:
     def __init__(self, db: Session):
         self.db = db
-        self.user_service = CustomerService(db)
+        self.user_service = MobileService(db)
 
     def _generate_otp(self) -> str:
         return f"{random.randint(0, 999999):06d}"

@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from core.database import get_db
-from modules.auth.services.customer_service import CustomerService
+from modules.auth.services.mobile_service import MobileService
 from modules.auth.services.verification_service import VerificationService, VerificationError
 from modules.auth.services.password_reset_service import PasswordResetService, PasswordResetError
-from modules.auth.dto.customer_dto import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, VerifyRequest, ForgotPasswordRequest, ResetPasswordRequest
+from modules.auth.dto.mobile_dto import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, VerifyRequest, ForgotPasswordRequest, ResetPasswordRequest
 from models.user import User
 from utils.security import create_access_token, create_refresh_token, jwt, SECRET_KEY, ALGORITHM
 from fastapi import Header
@@ -35,7 +35,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     locale = accept_language
-    service = CustomerService(db)
+    service = MobileService(db)
     user = service.authenticate_customer(payload.email, payload.password)
     if not user:
         raise HTTPException(status_code=401, detail=t('invalid_credentials', locale))
@@ -107,7 +107,7 @@ def reset_password(payload: ResetPasswordRequest, accept_language: str | None = 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     locale = accept_language
-    service = CustomerService(db)
+    service = MobileService(db)
     customer = service.get_customer_profile(current_user.id)
     if not customer:
         raise HTTPException(status_code=404, detail=t('profile_not_found', locale))

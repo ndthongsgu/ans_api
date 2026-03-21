@@ -1,7 +1,13 @@
 from sqlalchemy.orm import Session
 from models.stall import Stall
+from models.stallTranslation import StallTranslation
+from common.enums.language import LanguageCode
+from utils.translation import translate_text
 import time
+import logging
 from typing import Tuple, List
+
+logger = logging.getLogger(__name__)
 
 class StallService:
     def __init__(self, db: Session):
@@ -62,6 +68,46 @@ class StallService:
             created_at=int(time.time())
         )
         self.db.add(stall)
+        self.db.flush()  # Get stall ID without committing yet
+        
+        # Create translations for all available languages
+        for lang_info in LanguageCode.LIST:
+            language_code = lang_info['code']
+            
+            try:
+                # Try to translate name and category to target language
+                if language_code == 'vi':
+                    # Vietnamese is the original language
+                    translated_name = data['name']
+                    translated_category = data.get('category')
+                else:
+                    # Translate to other languages
+                    translated_name = translate_text(data['name'], 'vi', language_code)
+                    translated_category = None
+                    if data.get('category'):
+                        translated_category = translate_text(data.get('category', ''), 'vi', language_code)
+                
+                translation = StallTranslation(
+                    stall_id=stall.id,
+                    language_code=language_code,
+                    name=translated_name,
+                    category=translated_category,
+                )
+                self.db.add(translation)
+                logger.info(f"[CREATE] {language_code}: {translated_name} | {translated_category}")
+            
+            except Exception as e:
+                # If translation fails, fall back to Vietnamese text
+                logger.warning(f"[FALLBACK] Translation failed for {language_code}: {str(e)}, using Vietnamese text")
+                
+                translation = StallTranslation(
+                    stall_id=stall.id,
+                    language_code=language_code,
+                    name=data['name'],
+                    category=data.get('category'),
+                )
+                self.db.add(translation)
+        
         self.db.commit()
         self.db.refresh(stall)
         return stall
@@ -97,6 +143,84 @@ class StallService:
         stall.contact_phone = data.get('contact_phone')
         stall.website = data.get('website')
         stall.updated_at = int(time.time())
+        
+        # Update Vietnamese translation
+        vi_translation = self.db.query(StallTranslation).filter(
+            StallTranslation.stall_id == stall_id,
+            StallTranslation.language_code == "vi"
+        ).first()
+        
+        if vi_translation:
+            vi_translation.name = data['name']
+            vi_translation.category = data.get('category')
+            vi_translation.updated_at = int(time.time())
+        else:
+            # Create Vietnamese translation if it doesn't exist
+            vi_translation = StallTranslation(
+                stall_id=stall_id,
+                language_code="vi",
+                name=data['name'],
+                category=data.get('category'),
+            )
+            self.db.add(vi_translation)
+        
+        # Auto-translate to other languages when Vietnamese is updated
+        for lang_info in LanguageCode.LIST:
+            if lang_info['code'] == 'vi':
+                continue  # Already handled Vietnamese above
+            
+            language_code = lang_info['code']
+            
+            try:
+                # Translate Vietnamese name and category to target language
+                translated_name = translate_text(data['name'], 'vi', language_code)
+                translated_category = None
+                if data.get('category'):
+                    translated_category = translate_text(data.get('category', ''), 'vi', language_code)
+                
+                # Update or create translation for this language
+                other_translation = self.db.query(StallTranslation).filter(
+                    StallTranslation.stall_id == stall_id,
+                    StallTranslation.language_code == language_code
+                ).first()
+                
+                if other_translation:
+                    other_translation.name = translated_name
+                    other_translation.category = translated_category
+                    other_translation.updated_at = int(time.time())
+                else:
+                    # Create translation if it doesn't exist
+                    other_translation = StallTranslation(
+                        stall_id=stall_id,
+                        language_code=language_code,
+                        name=translated_name,
+                        category=translated_category,
+                    )
+                    self.db.add(other_translation)
+                
+                logger.info(f"[UPDATE] {language_code}: {translated_name} | {translated_category}")
+            
+            except Exception as e:
+                # If translation fails, fall back to Vietnamese text
+                logger.warning(f"[FALLBACK] Translation failed for {language_code}: {str(e)}, using Vietnamese text")
+                
+                other_translation = self.db.query(StallTranslation).filter(
+                    StallTranslation.stall_id == stall_id,
+                    StallTranslation.language_code == language_code
+                ).first()
+                
+                if other_translation:
+                    other_translation.name = data['name']
+                    other_translation.category = data.get('category')
+                    other_translation.updated_at = int(time.time())
+                else:
+                    other_translation = StallTranslation(
+                        stall_id=stall_id,
+                        language_code=language_code,
+                        name=data['name'],
+                        category=data.get('category'),
+                    )
+                    self.db.add(other_translation)
         
         self.db.commit()
         return stall

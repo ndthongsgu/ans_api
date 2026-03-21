@@ -3,9 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+
+# Import logging config first
+import logging_config
+
 from api.v1.admin import router as admin_router
 from api.v1.owner import router as owner_router
-from api.v1.customer import router as customer_router
+from api.v1.mobile import router as mobile_router
 from modules.actionLog.controllers.admin_controller import router as action_log_router
 from core.database import engine, Base
 from common.dto.response import error_response
@@ -26,7 +30,7 @@ app.add_middleware(
 
 app.include_router(admin_router, prefix="/admin")
 app.include_router(owner_router, prefix="/owner")
-app.include_router(customer_router, prefix="/customer")
+app.include_router(mobile_router, prefix="/mobile")
 app.include_router(action_log_router)
 
 # Serve audio files

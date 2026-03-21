@@ -11,7 +11,7 @@ router = APIRouter(prefix="/auth")
 
 security = HTTPBearer()
 
-from modules.auth.controllers.customer_controller import get_current_user
+from modules.auth.controllers.mobile_controller import get_current_user
 from models.user import User
 
 

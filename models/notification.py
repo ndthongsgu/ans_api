@@ -2,6 +2,7 @@ from sqlalchemy import (
     Column, String, Integer, Text, Boolean, Index, ForeignKey
 )
 from sqlalchemy import JSON
+from sqlalchemy.orm import relationship
 from models.base import BaseModel
 
 class Notification(BaseModel):
@@ -15,3 +16,9 @@ class Notification(BaseModel):
     is_read = Column(Boolean, default=False)
     sent_at = Column(Integer, nullable=False)
     read_at = Column(Integer, nullable=True)
+
+    translations = relationship(
+        "NotificationTranslation",
+        back_populates="notification",
+        cascade="all, delete-orphan"
+    )

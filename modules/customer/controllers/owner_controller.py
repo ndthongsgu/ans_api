@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from models.user import User
-from modules.auth.controllers.customer_controller import get_current_user
+from modules.auth.controllers.mobile_controller import get_current_user
 from modules.customer.dto.owner_dto import OwnerDashboardResponse
 from modules.customer.services.owner_service import OwnerDashboardService, ServiceError
 from utils.i18n import t

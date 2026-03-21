@@ -124,7 +124,7 @@ class OwnerService:
         return [
             {
                 "id": o.id,
-                "name": o.full_name,
+                "full_name": o.full_name,
                 "phone": o.phone or "",
                 "userId": o.user_id
             }
