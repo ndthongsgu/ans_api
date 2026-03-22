@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 from core.database import get_db
@@ -13,7 +13,8 @@ from modules.auth.controllers.admin_controller import get_current_user
 from models.user import User
 from models.stallTranslation import StallTranslation
 from common.dto.response import success_response
-from typing import List
+from typing import List, Optional
+from utils.file_helper import save_stall_image
 
 router = APIRouter(prefix="/stalls")
 
@@ -97,13 +98,44 @@ def select(current_user: User = Depends(get_current_user), db: Session = Depends
     )
 
 @router.post("/")
-def create(stall: StallCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+async def create(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    accept_language: str | None = Header(None),
+    owner_id: str = Form(...),
+    name: str = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    radius: Optional[float] = Form(None),
+    category: Optional[str] = Form(None),
+    price_range: Optional[str] = Form(None),
+    opening_hours: Optional[str] = Form(None),
+    contact_phone: Optional[str] = Form(None),
+    website: Optional[str] = Form(None),
+):
     ensure_admin(current_user, accept_language)
     service = StallService(db)
+    
+    # Create stall data (without image handling)
+    stall_data = {
+        "owner_id": owner_id,
+        "name": name,
+        "latitude": latitude,
+        "longitude": longitude,
+        "radius": radius,
+        "category": category,
+        "price_range": price_range,
+        "opening_hours": opening_hours,
+        "contact_phone": contact_phone,
+        "website": website,
+        "cover_image": None,  # Image will be uploaded separately
+    }
+    
     try:
-        s = service.create_stall(stall.dict())
+        s = service.create_stall(stall_data)
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
+    
     data = {
         "id": s.id,
         "owner_id": s.owner_id,
@@ -127,11 +159,50 @@ def create(stall: StallCreate, current_user: User = Depends(get_current_user), d
     )
 
 @router.put("/{stall_id}")
-def update(stall_id: str, stall: StallUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+async def update(
+    stall_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    accept_language: str | None = Header(None),
+    owner_id: Optional[str] = Form(None),
+    name: Optional[str] = Form(None),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
+    radius: Optional[float] = Form(None),
+    category: Optional[str] = Form(None),
+    price_range: Optional[str] = Form(None),
+    opening_hours: Optional[str] = Form(None),
+    contact_phone: Optional[str] = Form(None),
+    website: Optional[str] = Form(None),
+):
     ensure_admin(current_user, accept_language)
     service = StallService(db)
+    
+    # Build update data (without image handling - use dedicated endpoint for images)
+    stall_data = {}
+    if owner_id is not None:
+        stall_data["owner_id"] = owner_id
+    if name is not None:
+        stall_data["name"] = name
+    if latitude is not None:
+        stall_data["latitude"] = latitude
+    if longitude is not None:
+        stall_data["longitude"] = longitude
+    if radius is not None:
+        stall_data["radius"] = radius
+    if category is not None:
+        stall_data["category"] = category
+    if price_range is not None:
+        stall_data["price_range"] = price_range
+    if opening_hours is not None:
+        stall_data["opening_hours"] = opening_hours
+    if contact_phone is not None:
+        stall_data["contact_phone"] = contact_phone
+    if website is not None:
+        stall_data["website"] = website
+    
     try:
-        s = service.update_stall(stall_id, stall.dict())
+        s = service.update_stall(stall_id, stall_data)
         if not s:
             raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
@@ -215,4 +286,85 @@ def activate(stall_id: str, current_user: User = Depends(get_current_user), db: 
         raise HTTPException(status_code=404, detail="Không tìm thấy")
     return success_response(
         message="Kích hoạt cửa hàng thành công"
+    )
+
+@router.post("/{stall_id}/upload-image")
+async def upload_image(
+    stall_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    accept_language: str | None = Header(None),
+    cover_image: UploadFile = File(...),
+):
+    """Upload or replace stall cover image"""
+    ensure_admin(current_user, accept_language)
+    service = StallService(db)
+    
+    # Verify stall exists
+    stall = service.get_stall(stall_id)
+    if not stall:
+        raise HTTPException(status_code=404, detail="Không tìm thấy cửa hàng")
+    
+    # Handle image upload
+    try:
+        file_content = await cover_image.read()
+        image_url = save_stall_image(file_content, cover_image.filename or "image")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Lỗi khi tải ảnh: {str(e)}")
+    
+    # Update stall with new image URL
+    try:
+        s = service.upload_stall_image(stall_id, image_url)
+    except RuntimeError as err:
+        raise HTTPException(status_code=400, detail=str(err))
+    
+    return success_response(
+        message="Tải ảnh cửa hàng thành công",
+        data={
+            "id": s.id,
+            "cover_image": s.cover_image,
+        }
+    )
+
+@router.post("/{stall_id}/image")
+async def upload_image_alt(
+    stall_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    accept_language: str | None = Header(None),
+    cover_image: UploadFile = File(...),
+):
+    """Upload or replace stall cover image (alternative endpoint)"""
+    return await upload_image(stall_id, current_user, db, accept_language, cover_image)
+
+@router.delete("/{stall_id}/image")
+def delete_image(
+    stall_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    accept_language: str | None = Header(None),
+):
+    """Delete stall cover image"""
+    ensure_admin(current_user, accept_language)
+    service = StallService(db)
+    
+    # Verify stall exists
+    stall = service.get_stall(stall_id)
+    if not stall:
+        raise HTTPException(status_code=404, detail="Không tìm thấy cửa hàng")
+    
+    # Delete image
+    try:
+        s = service.delete_stall_image(stall_id)
+        if not s:
+            raise HTTPException(status_code=404, detail="Không tìm thấy cửa hàng")
+    except RuntimeError as err:
+        raise HTTPException(status_code=400, detail=str(err))
+    
+    return success_response(
+        message="Xóa ảnh cửa hàng thành công",
+        data={
+            "id": s.id,
+            "cover_image": s.cover_image,
+        }
     )

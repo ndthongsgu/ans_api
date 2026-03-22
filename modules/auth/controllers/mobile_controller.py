@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from core.database import get_db
-from modules.auth.services.mobile_service import MobileService
+from modules.auth.services.mobile_service import MobileService, ServiceError
 from modules.auth.services.verification_service import VerificationService, VerificationError
 from modules.auth.services.password_reset_service import PasswordResetService, PasswordResetError
 from modules.auth.dto.mobile_dto import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, VerifyRequest, ForgotPasswordRequest, ResetPasswordRequest
@@ -112,6 +112,31 @@ def get_me(current_user: User = Depends(get_current_user), db: Session = Depends
     if not customer:
         raise HTTPException(status_code=404, detail=t('profile_not_found', locale))
     return customer
+
+
+@router.post("/google-login", response_model=TokenResponse)
+def google_login(payload: dict, db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+    """Google OAuth login endpoint - receives Google ID token from mobile app"""
+    locale = accept_language
+    try:
+        id_token_str = payload.get("idToken")
+        if not id_token_str:
+            raise HTTPException(status_code=400, detail="idToken required")
+        
+        service = MobileService(db)
+        user = service.authenticate_with_google(id_token_str)
+        
+        access = create_access_token(user.id)
+        refresh = create_refresh_token(user.id)
+        return {"accessToken": access, "refreshToken": refresh}
+    except ServiceError as e:
+        from utils.i18n import t
+        # If detailed message exists (e.g., from token validation), use it; otherwise translate the error code
+        detail = e.message if e.message else t(e.code, locale)
+        raise HTTPException(status_code=400, detail=detail)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(payload: RefreshRequest, db: Session = Depends(get_db), accept_language: str | None = Header(None)):

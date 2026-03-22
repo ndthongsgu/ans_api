@@ -30,6 +30,9 @@ class ResetPasswordRequest(BaseModel):
     otp: str
     new_password: str
 
+class GoogleLoginRequest(BaseModel):
+    idToken: str
+
 class TokenResponse(BaseModel):
     accessToken: str
     refreshToken: str

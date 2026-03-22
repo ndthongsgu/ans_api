@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from common.enums.language import LanguageCode
 from models.notification import Notification
 from models.notificationTranslation import NotificationTranslation
 from models.user import User
@@ -16,17 +17,17 @@ class NotificationMobileService:
         self.db = db
 
     def _get_notification_translation(self, notification_id: str, language_code: str) -> NotificationTranslation | None:
-        """Get translation for specific language, fallback to 'vi' if not found"""
+        """Get translation for specific language, fallback to default language if not found"""
         trans = self.db.query(NotificationTranslation).filter(
             NotificationTranslation.notification_id == notification_id,
             NotificationTranslation.language_code == language_code
         ).first()
         
-        if not trans and language_code != "vi":
-            # Fallback to Vietnamese
+        if not trans and language_code != LanguageCode.DEFAULT:
+            # Fallback to default language
             trans = self.db.query(NotificationTranslation).filter(
                 NotificationTranslation.notification_id == notification_id,
-                NotificationTranslation.language_code == "vi"
+                NotificationTranslation.language_code == LanguageCode.DEFAULT
             ).first()
         
         return trans

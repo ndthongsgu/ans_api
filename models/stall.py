@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, Text,
+    Column, String, Integer, Float, Boolean, Text, Double,
     ForeignKey, Numeric, Index
 )
 from sqlalchemy.orm import relationship
@@ -12,8 +12,8 @@ class Stall(BaseModel):
     owner_id = Column(String(36), ForeignKey("owners.id"), nullable=False)
 
     name = Column(String(255), nullable=False)
-    latitude = Column(Float, nullable=False)
-    longitude = Column(Float, nullable=False)
+    latitude = Column(Double, nullable=False)
+    longitude = Column(Double, nullable=False)
 
     radius = Column(Integer, default=50)
     cover_image = Column(String(500))

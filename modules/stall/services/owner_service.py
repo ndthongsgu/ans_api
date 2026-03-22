@@ -3,6 +3,7 @@ import time
 
 from sqlalchemy.orm import Session
 
+from common.enums.language import LanguageCode
 from models.owner import Owner
 from models.stall import Stall
 from models.stallContent import StallContent
@@ -49,7 +50,7 @@ class OwnerStallService:
 
 	def _normalize_language_code(self, language_code: str | None) -> str:
 		if language_code is None:
-			return "vi"
+			return LanguageCode.DEFAULT
 		return language_code.strip().lower()
 
 	def _parse_opening_hours(self, opening_hours: str | None) -> list[dict] | None:

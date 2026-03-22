@@ -8,40 +8,21 @@ from deep_translator import GoogleTranslator
 import logging
 import time
 from functools import lru_cache
+from common.enums.language import LanguageCode
 
 logger = logging.getLogger(__name__)
 
-# ==============================
-# LANGUAGE MAPPINGS
-# ==============================
-
-LANGUAGE_CODE_MAPPINGS = {
-    "vi": "vi",
-    "en": "en",
-    "zh": "zh-CN",   
-    "ja": "ja",
-    "ko": "ko",
-}
-
-GTTS_LANGUAGE_CODE_MAPPINGS = {
-    "vi": "vi",
-    "en": "en",
-    "zh": "zh-CN",
-    "ja": "ja",
-    "ko": "ko",
-}
-
 
 def _normalize_lang_code(lang_code: str) -> str:
-    return LANGUAGE_CODE_MAPPINGS.get(lang_code.lower(), lang_code)
+    return LanguageCode.get_translation_code(lang_code)
 
 
 def get_translation_language_code(language_code: str) -> str:
-    return LANGUAGE_CODE_MAPPINGS.get(language_code.lower(), language_code)
+    return LanguageCode.get_translation_code(language_code)
 
 
 def get_tts_language_code(language_code: str) -> str:
-    return GTTS_LANGUAGE_CODE_MAPPINGS.get(language_code.lower(), language_code)
+    return LanguageCode.get_tts_code(language_code)
 
 
 # ==============================

@@ -4,12 +4,18 @@ from models.user import User
 from modules.auth.dto.mobile_dto import RegisterRequest, UserCreate
 from utils.security import hash_password, verify_password
 import time
+from google.auth.transport import requests
+from google.oauth2 import id_token
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ServiceError(Exception):
     """Service-level error with a machine-readable code."""
-    def __init__(self, code: str):
+    def __init__(self, code: str, message: str | None = None):
         self.code = code
-        super().__init__(code)
+        self.message = message  # Store detailed error message
+        super().__init__(message or code)
 
 
 class MobileService:
@@ -102,4 +108,58 @@ class MobileService:
 
     def get_customer_profile(self, user_id: str):
         customer = self.db.query(Customer).filter(Customer.user_id == user_id).first()
+        customer.email = self.db.query(User).filter(User.id == user_id).first().email
         return customer
+
+    def verify_google_token(self, id_token_str: str) -> dict:
+        """Verify Google ID token and return user info"""
+        try:
+            # Verify token without strict audience check (accepts any valid Google token)
+            # Added clock_skew_in_seconds to handle minor time differences between client and server
+            idinfo = id_token.verify_oauth2_token(id_token_str, requests.Request(), clock_skew_in_seconds=10)
+            # Optionally verify it's a Google token
+            if idinfo.get('iss') not in ['https://accounts.google.com', 'accounts.google.com']:
+                raise ValueError('Not a Google token')
+            return idinfo
+        except ValueError as e:
+            error_msg = str(e)
+            logger.error(f"Invalid token: {error_msg}")
+            raise ServiceError('invalid_google_token', message=error_msg)
+
+    def authenticate_with_google(self, id_token_str: str) -> User:
+        """Authenticate user with Google ID token, create if not exists"""
+        # Verify the token
+        idinfo = self.verify_google_token(id_token_str)
+
+        email = idinfo.get("email")
+        full_name = idinfo.get("name", "")
+        google_id = idinfo.get("sub")
+
+        if not email:
+            raise ServiceError('google_email_not_provided')
+
+        # Find or create customer user
+        user = self.find_by_email(email)
+
+        if not user:
+            # Create new user and customer profile
+            user = User(email=email, username=email.split("@")[0], created_at=int(time.time()))
+            self.db.add(user)
+            self.db.flush()
+
+            customer = Customer(user_id=user.id, full_name=full_name)
+            self.db.add(customer)
+            self.db.commit()
+        else:
+            # Update customer profile if needed
+            customer = self.get_customer_profile(user.id)
+            if customer and not customer.full_name and full_name:
+                customer.full_name = full_name
+                self.db.commit()
+            elif not customer and full_name:
+                # Create customer profile if missing
+                customer = Customer(user_id=user.id, full_name=full_name)
+                self.db.add(customer)
+                self.db.commit()
+
+        return user

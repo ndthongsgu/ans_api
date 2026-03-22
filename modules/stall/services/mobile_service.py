@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from common.enums.language import LanguageCode
 from models.stall import Stall
 from models.stallTranslation import StallTranslation
 from typing import List, Tuple
@@ -14,24 +15,37 @@ class StallMobileService:
         self.db = db
 
     def _get_translation_by_language(self, stall_id: str, language_code: str) -> StallTranslation | None:
-        """Get translation for specific language, fallback to 'vi' if not found"""
+        """Get translation for specific language, fallback to default language if not found"""
         trans = self.db.query(StallTranslation).filter(
             StallTranslation.stall_id == stall_id,
             StallTranslation.language_code == language_code
         ).first()
         
-        if not trans and language_code != "vi":
-            # Fallback to Vietnamese
+        if not trans and language_code != LanguageCode.DEFAULT:
+            # Fallback to default language
             trans = self.db.query(StallTranslation).filter(
                 StallTranslation.stall_id == stall_id,
-                StallTranslation.language_code == "vi"
+                StallTranslation.language_code == LanguageCode.DEFAULT
             ).first()
         
         return trans
 
-    def list_stalls(self, language_code: str = "vi") -> List[dict]:
-        """Get all active stalls with multilingual translations"""
-        stalls = self.db.query(Stall).filter(Stall.is_deleted == False).all()
+    def list_stalls(self, language_code: str = "vi", search: str = None) -> List[dict]:
+        """Get all active stalls with multilingual translations, optionally filtered by name"""
+        query = self.db.query(Stall).filter(Stall.is_deleted == False)
+        
+        # Filter by search term if provided
+        if search:
+            search_lower = search.lower()
+            # Search in translated names
+            stalls = []
+            for s in query.all():
+                trans = self._get_translation_by_language(s.id, language_code)
+                stall_name = (trans.name if trans else s.name).lower()
+                if search_lower in stall_name:
+                    stalls.append(s)
+        else:
+            stalls = query.all()
         
         results = []
         for s in stalls:
@@ -40,6 +54,7 @@ class StallMobileService:
             results.append({
                 "id": s.id,
                 "owner_id": s.owner_id,
+                "owner_name": s.owner.full_name if s.owner else None,
                 "name": trans.name if trans else s.name,
                 "category": trans.category if trans else s.category,
                 "latitude": s.latitude,
@@ -73,6 +88,7 @@ class StallMobileService:
         data = {
             "id": stall.id,
             "owner_id": stall.owner_id,
+            "owner_name": stall.owner.full_name if stall.owner else None,
             "name": trans.name if trans else stall.name,
             "category": trans.category if trans else stall.category,
             "latitude": stall.latitude,
@@ -115,6 +131,7 @@ class StallMobileService:
             results.append({
                 "id": s.id,
                 "owner_id": s.owner_id,
+                "owner_name": s.owner.full_name if s.owner else None,
                 "name": trans.name if trans else s.name,
                 "category": trans.category if trans else s.category,
                 "latitude": s.latitude,

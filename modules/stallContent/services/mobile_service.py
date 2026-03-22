@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from common.enums.language import LanguageCode
 from models.stallContent import StallContent
 from models.stallContentTranslation import StallContentTranslation
 from typing import List
@@ -14,23 +15,23 @@ class StallContentMobileService:
         self.db = db
 
     def _get_content_translation(self, content_id: str, language_code: str) -> StallContentTranslation | None:
-        """Get translation for specific language, fallback to 'vi' if not found"""
+        """Get translation for specific language, fallback to default language if not found"""
         trans = self.db.query(StallContentTranslation).filter(
             StallContentTranslation.stall_content_id == content_id,
             StallContentTranslation.language_code == language_code
         ).first()
         
-        if not trans and language_code != "vi":
-            # Fallback to Vietnamese
+        if not trans and language_code != LanguageCode.DEFAULT:
+            # Fallback to default language
             trans = self.db.query(StallContentTranslation).filter(
                 StallContentTranslation.stall_content_id == content_id,
-                StallContentTranslation.language_code == "vi"
+                StallContentTranslation.language_code == LanguageCode.DEFAULT
             ).first()
         
         return trans
 
     def get_stall_contents(self, stall_id: str, language_code: str = "vi") -> List[dict]:
-        """Get all content items for a stall with multilingual translations"""
+        """Get all content items for a stall with translations in requested language only"""
         contents = self.db.query(StallContent).filter(
             StallContent.stall_id == stall_id,
             StallContent.is_deleted == False
@@ -40,24 +41,16 @@ class StallContentMobileService:
         for c in contents:
             trans = self._get_content_translation(c.id, language_code)
             
+            # Use translation if available, otherwise use content's direct fields
+            audio_url = trans.audio_url if trans else c.audio_url
+            tts_script = trans.tts_script if trans else c.tts_script
+            
             result_item = {
                 "id": c.id,
-                "stall_id": c.stall_id,
-                "type": c.type,
-                "created_at": c.created_at,
-                "updated_at": c.updated_at,
-                "is_deleted": c.is_deleted,
+                "audio_url": audio_url,
+                "tts_script": tts_script,
+                "language_code": language_code,
             }
-            
-            # Add translation-specific fields
-            if trans:
-                result_item["audio_url"] = trans.audio_url
-                result_item["tts_script"] = trans.tts_script
-                result_item["language_code"] = trans.language_code
-            else:
-                result_item["audio_url"] = None
-                result_item["tts_script"] = None
-                result_item["language_code"] = language_code
             
             results.append(result_item)
         
@@ -81,20 +74,21 @@ class StallContentMobileService:
         result = {
             "id": content.id,
             "stall_id": content.stall_id,
-            "type": content.type,
+            "audio_duration": content.audio_duration,
+            "audio_file_size": content.audio_file_size,
             "created_at": content.created_at,
             "updated_at": content.updated_at,
-            "is_deleted": content.is_deleted,
         }
         
-        # Add translation-specific fields
+        # Add translation-specific fields if translation exists
         if trans:
             result["audio_url"] = trans.audio_url
             result["tts_script"] = trans.tts_script
             result["language_code"] = trans.language_code
         else:
-            result["audio_url"] = None
-            result["tts_script"] = None
+            # Fallback to direct content audio_url if no translation
+            result["audio_url"] = content.audio_url
+            result["tts_script"] = content.tts_script
             result["language_code"] = language_code
         
         logger.info(f"Retrieved content {content_id} for stall {stall_id} in language {language_code}")
