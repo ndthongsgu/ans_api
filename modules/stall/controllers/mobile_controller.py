@@ -15,13 +15,24 @@ def list_stalls(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     accept_language: Optional[str] = Header(None),
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    limit: int = 20,
+    offset: int = 0
 ):
-    """Get all stalls with multilingual translations, optionally filtered by name"""
+    """Get stalls sorted by distance with pagination, optionally filtered by name"""
     # Parse Accept-Language header, fallback to user preference, then to 'vi'
     user_lang = accept_language.split(',')[0] if accept_language else (current_user.preferred_language or "vi")
     service = StallMobileService(db)
-    results = service.list_stalls(user_lang, search)
+    results = service.list_stalls(
+        user_lang, 
+        search=search,
+        latitude=latitude,
+        longitude=longitude,
+        limit=limit,
+        offset=offset
+    )
     
     return success_response(
         message="Lấy dữ liệu thành công",

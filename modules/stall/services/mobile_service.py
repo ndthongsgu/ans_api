@@ -2,8 +2,9 @@ from sqlalchemy.orm import Session
 from common.enums.language import LanguageCode
 from models.stall import Stall
 from models.stallTranslation import StallTranslation
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +31,42 @@ class StallMobileService:
         
         return trans
 
-    def list_stalls(self, language_code: str = "vi", search: str = None) -> List[dict]:
-        """Get all active stalls with multilingual translations, optionally filtered by name"""
+    @staticmethod
+    def _calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate distance between two coordinates using Haversine formula (in km)"""
+        R = 6371  # Earth's radius in kilometers
+        lat1_rad = math.radians(lat1)
+        lat2_rad = math.radians(lat2)
+        delta_lat = math.radians(lat2 - lat1)
+        delta_lon = math.radians(lon2 - lon1)
+        
+        a = math.sin(delta_lat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
+        c = 2 * math.asin(math.sqrt(a))
+        
+        return R * c
+
+    def list_stalls(
+        self, 
+        language_code: str = "vi", 
+        search: Optional[str] = None,
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> List[dict]:
+        """Get active stalls with multilingual translations, sorted by distance if coordinates provided, with pagination"""
         query = self.db.query(Stall).filter(Stall.is_deleted == False)
         
         # Filter by search term if provided
         if search:
             search_lower = search.lower()
-            # Search in translated names
+            # Search in translated names and categories
             stalls = []
             for s in query.all():
                 trans = self._get_translation_by_language(s.id, language_code)
                 stall_name = (trans.name if trans else s.name).lower()
-                if search_lower in stall_name:
+                stall_category = (trans.category if trans else s.category or "").lower()
+                if search_lower in stall_name or search_lower in stall_category:
                     stalls.append(s)
         else:
             stalls = query.all()
@@ -51,7 +75,7 @@ class StallMobileService:
         for s in stalls:
             trans = self._get_translation_by_language(s.id, language_code)
             
-            results.append({
+            result_item = {
                 "id": s.id,
                 "owner_id": s.owner_id,
                 "owner_name": s.owner.full_name if s.owner else None,
@@ -67,10 +91,24 @@ class StallMobileService:
                 "website": s.website,
                 "average_rating": s.average_rating,
                 "total_reviews": s.total_reviews,
-            })
+            }
+            
+            # Add distance if user location is provided
+            if latitude is not None and longitude is not None:
+                distance_km = self._calculate_distance(latitude, longitude, s.latitude, s.longitude)
+                result_item["distance_km"] = round(distance_km, 2)
+            
+            results.append(result_item)
         
-        logger.info(f"Retrieved {len(results)} stalls for language {language_code}")
-        return results
+        # Sort by distance if coordinates are provided
+        if latitude is not None and longitude is not None:
+            results.sort(key=lambda x: x.get("distance_km", float('inf')))
+        
+        # Apply pagination
+        paginated_results = results[offset:offset + limit]
+        
+        logger.info(f"Retrieved {len(paginated_results)}/{len(results)} stalls for language {language_code}, offset={offset}, limit={limit}")
+        return paginated_results
 
     def get_stall(self, stall_id: str, language_code: str = "vi") -> dict | None:
         """Get stall detail with multilingual translations"""
