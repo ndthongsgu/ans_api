@@ -15,4 +15,3 @@ class EmailVerification(BaseModel):
     expires_at = Column(Integer, nullable=False)
     verified = Column(Boolean, default=False)
     attempts = Column(Integer, default=0)
-    created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))

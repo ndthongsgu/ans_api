@@ -6,13 +6,14 @@ from .employee import Employee
 from .customer import Customer
 from .stall import Stall
 from .stallContent import StallContent
+from .stallTranslation import StallTranslation
+from .stallContentTranslation import StallContentTranslation
 from .listeningHistory import ListeningHistory
-from .subscription_package import SubscriptionPackage
-from .customer_subscription_package import CustomerSubscriptionPackage
 from .gps_zone_config import GPSZoneConfig
 from .system_config import SystemConfig
 from .app_performance_log import AppPerformanceLog
 from .notification import Notification
+from .notificationTranslation import NotificationTranslation
 from .pending_upload import PendingUpload
 from .audio_playback_rule import AudioPlaybackRule
 from .data_sync_metadata import DataSyncMetadata

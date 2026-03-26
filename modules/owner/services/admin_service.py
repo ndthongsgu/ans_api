@@ -71,7 +71,6 @@ class OwnerService:
             phone=data.get('phone'),
             business_name=data.get('business_name'),
             business_address=data.get('business_address'),
-            subscription_package_id=data.get('subscription_package_id'),
             created_at=int(time.time())
         )
         self.db.add(owner)
@@ -98,7 +97,6 @@ class OwnerService:
         owner.phone = data.get('phone')
         owner.business_name = data.get('business_name')
         owner.business_address = data.get('business_address')
-        owner.subscription_package_id = data.get('subscription_package_id')
         
         self.db.commit()
         return owner
@@ -126,7 +124,7 @@ class OwnerService:
         return [
             {
                 "id": o.id,
-                "name": o.full_name,
+                "full_name": o.full_name,
                 "phone": o.phone or "",
                 "userId": o.user_id
             }

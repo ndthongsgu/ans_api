@@ -7,41 +7,31 @@ class StallContentPageRequest(BaseModel):
     sortBy: Optional[str] = None
     sortDirection: Optional[str] = "DESC"
     # filters
-    title: Optional[str] = None
     stall_id: Optional[str] = None
     is_deleted: Optional[bool] = None
 
 class StallContentCreate(BaseModel):
     stall_id: str
     language_code: Optional[str] = "vi"
-    title: str
-    description: Optional[str] = None
-    short_description: Optional[str] = None
-    audio_url: str
+    audio_url: Optional[str] = None  # Optional if tts_script is provided
     audio_duration: Optional[int] = None
     audio_file_size: Optional[int] = None
-    tts_script: Optional[str] = None
+    tts_script: Optional[str] = None  # TTS script for auto audio generation
     version: Optional[int] = 1
 
 class StallContentUpdate(BaseModel):
     stall_id: str
     language_code: Optional[str] = "vi"
-    title: str
-    description: Optional[str] = None
-    short_description: Optional[str] = None
-    audio_url: str
+    audio_url: Optional[str] = None  # Optional if tts_script is provided
     audio_duration: Optional[int] = None
     audio_file_size: Optional[int] = None
-    tts_script: Optional[str] = None
+    tts_script: Optional[str] = None  # TTS script for auto audio generation
     version: Optional[int] = 1
 
 class StallContentOut(BaseModel):
     id: str
     stall_id: str
     language_code: str
-    title: str
-    description: Optional[str]
-    short_description: Optional[str]
     audio_url: str
     audio_duration: Optional[int]
     audio_file_size: Optional[int]

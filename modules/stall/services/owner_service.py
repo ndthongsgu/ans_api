@@ -59,7 +59,7 @@ class OwnerStallService:
 
 	def _normalize_language_code(self, language_code: str | None) -> str:
 		if language_code is None:
-			return "vi"
+			return LanguageCode.DEFAULT
 		return language_code.strip().lower()
 
 	def _ensure_supported_language(self, language_code: str) -> str:

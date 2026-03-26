@@ -1,4 +1,8 @@
 class LanguageCode:
+    # Default language for fallback
+    DEFAULT = "vi"
+    
+    # List of all supported languages
     LIST = [
         {
             "code": "vi",
@@ -6,28 +10,51 @@ class LanguageCode:
         },
         {
             "code": "en",
-            "label": "Tiếng Anh"
+            "label": "English"
         },
         {
             "code": "zh",
-            "label": "Tiếng Trung"
+            "label": "中文"
         },
         {
             "code": "ja",
-            "label": "Tiếng Nhật"
+            "label": "日本語"
         },
         {
             "code": "ko",
-            "label": "Tiếng Hàn"
+            "label": "한국어"
         }
     ]
-
+    
+    # Mapping for translation service (Google Translate)
+    TRANSLATION_CODE_MAPPINGS = {
+        "vi": "vi",
+        "en": "en",
+        "zh": "zh-CN",   
+        "ja": "ja",
+        "ko": "ko",
+    }
+    
+    # Mapping for TTS service (Google Text-to-Speech)
+    TTS_CODE_MAPPINGS = {
+        "vi": "vi",
+        "en": "en",
+        "zh": "zh-CN",
+        "ja": "ja",
+        "ko": "ko",
+    }
+    
     @classmethod
-    def codes(cls) -> list[str]:
-        return [item["code"] for item in cls.LIST]
-
+    def get_codes(cls) -> list[str]:
+        """Get list of all language codes"""
+        return [lang["code"] for lang in cls.LIST]
+    
     @classmethod
-    def is_supported(cls, code: str | None) -> bool:
-        if not code:
-            return False
-        return code.strip().lower() in cls.codes()
+    def get_translation_code(cls, language_code: str) -> str:
+        """Get translation service language code"""
+        return cls.TRANSLATION_CODE_MAPPINGS.get(language_code.lower(), language_code)
+    
+    @classmethod
+    def get_tts_code(cls, language_code: str) -> str:
+        """Get TTS service language code"""
+        return cls.TTS_CODE_MAPPINGS.get(language_code.lower(), language_code)

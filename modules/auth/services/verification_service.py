@@ -2,9 +2,9 @@ import random
 import time
 from sqlalchemy.orm import Session
 from models.email_verification import EmailVerification
-from modules.auth.dto.customer_dto import RegisterRequest
+from modules.auth.dto.mobile_dto import RegisterRequest
 from utils.email_util import send_email
-from modules.auth.services.customer_service import CustomerService, ServiceError
+from modules.auth.services.mobile_service import MobileService, ServiceError
 from utils.security import hash_password
 from utils.i18n import t
 
@@ -22,16 +22,16 @@ class VerificationError(Exception):
 class VerificationService:
     def __init__(self, db: Session):
         self.db = db
-        self.customer_service = CustomerService(db)
+        self.mobile_service = MobileService(db)
 
     def _generate_otp(self) -> str:
         return f"{random.randint(0, 999999):06d}"
 
     def create_verification(self, register_request: RegisterRequest, locale: str | None = None):
         # Check email / username availability
-        if self.customer_service.find_by_email(register_request.email):
+        if self.mobile_service.find_by_email(register_request.email):
             raise VerificationError('email_exists')
-        if register_request.username and self.customer_service.find_by_username(register_request.username):
+        if register_request.username and self.mobile_service.find_by_username(register_request.username):
             raise VerificationError('username_exists')
 
         otp = self._generate_otp()
@@ -79,9 +79,9 @@ class VerificationService:
         self.db.commit()
 
         # Create user and customer using the stored hashed password
-        # We add a method in CustomerService to create with pre-hashed password
+        # We add a method in MobileService to create with pre-hashed password
         try:
-            user, customer = self.customer_service.create_customer_with_hashed_password(
+            user, customer = self.mobile_service.create_customer_with_hashed_password(
                 username=v.username,
                 email=v.email,
                 password_hash=v.password_hash,

@@ -1,7 +1,4 @@
-from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, Text,
-    ForeignKey, Numeric, Index
-)
+from sqlalchemy import (Column, String, Integer, Text, ForeignKey)
 from sqlalchemy.orm import relationship
 from models.base import BaseModel
 
@@ -11,7 +8,6 @@ class StallContent(BaseModel):
 
     stall_id = Column(String(36), ForeignKey("stalls.id"), nullable=False)
 
-    language_code = Column(String(10), default="vi")
     audio_url = Column(String(500), nullable=False)
     audio_duration = Column(Integer)
     audio_file_size = Column(Integer)
@@ -20,4 +16,9 @@ class StallContent(BaseModel):
     listening_histories = relationship(
         "ListeningHistory",
         back_populates="content"
+    )
+    translations = relationship(
+        "StallContentTranslation",
+        back_populates="stall_content",
+        cascade="all, delete-orphan"
     )

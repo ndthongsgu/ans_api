@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from models.user import User
-from modules.auth.controllers.customer_controller import get_current_user
+from modules.auth.controllers.mobile_controller import get_current_user
 from modules.auth.dto.owner_dto import (
 	LoginRequest,
 	RefreshRequest,
@@ -85,7 +85,6 @@ def me(
 			"phone": owner.phone,
 			"business_name": owner.business_name,
 			"business_address": owner.business_address,
-			"subscription_package_id": owner.subscription_package_id,
 			"subscription_expires_at": owner.subscription_expires_at,
 		},
 	}
@@ -119,7 +118,6 @@ def update_me(
 			"phone": owner.phone,
 			"business_name": owner.business_name,
 			"business_address": owner.business_address,
-			"subscription_package_id": owner.subscription_package_id,
 			"subscription_expires_at": owner.subscription_expires_at,
 		},
 	}

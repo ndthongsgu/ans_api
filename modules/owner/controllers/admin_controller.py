@@ -10,7 +10,7 @@ from modules.owner.dto.admin_dto import (
 )
 from modules.auth.controllers.admin_controller import get_current_user
 from models.user import User
-from utils.i18n import t
+from common.dto.response import success_response
 from typing import List
 
 router = APIRouter(prefix="/owners")
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/owners")
 # Helper to check if user is admin
 def ensure_admin(user: User, locale: str | None = None):
     if not user.is_admin:
-        raise HTTPException(status_code=403, detail=t('forbidden', locale))
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập")
 
 @router.post("/pagination")
 def paginate(req: OwnerPageRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -40,20 +40,31 @@ def paginate(req: OwnerPageRequest, current_user: User = Depends(get_current_use
             "roles": [r.code for r in o.user.roles] if o.user else [],
             "created_at": o.created_at,
         })
-    return {"content": results, "totalElements": total}
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data={"content": results, "totalElements": total}
+    )
 
 @router.get("/")
 def get_all(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = OwnerService(db)
     owners = service.list_all_active()
-    return [{"id": o.id, "name": o.full_name, "phone": o.phone} for o in owners]
+    data = [{"id": o.id, "name": o.full_name, "phone": o.phone} for o in owners]
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.get("/select")
 def select(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = OwnerService(db)
-    return service.list_for_select()
+    data = service.list_for_select()
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.post("/")
 def create(owner: OwnerCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -63,7 +74,10 @@ def create(owner: OwnerCreate, current_user: User = Depends(get_current_user), d
         o = service.create_owner(owner.dict())
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"success": True, "message": "Tạo thành công", "statusCode": 201}
+    return success_response(
+        message="Tạo chủ cửa hàng thành công",
+        status_code=201
+    )
 
 @router.put("/{owner_id}")
 def update(owner_id: str, owner: OwnerUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -75,7 +89,9 @@ def update(owner_id: str, owner: OwnerUpdate, current_user: User = Depends(get_c
             raise HTTPException(status_code=404, detail="Không tìm thấy")
     except RuntimeError as err:
         raise HTTPException(status_code=400, detail=str(err))
-    return {"success": True, "message": "Cập nhật thành công", "statusCode": 200}
+    return success_response(
+        message="Cập nhật chủ cửa hàng thành công"
+    )
 
 @router.get("/{owner_id}")
 def detail(owner_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -83,8 +99,8 @@ def detail(owner_id: str, current_user: User = Depends(get_current_user), db: Se
     service = OwnerService(db)
     o = service.get_owner(owner_id)
     if not o:
-        raise HTTPException(status_code=404, detail=t('not_found', accept_language))
-    return {
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    data = {
         "id": o.id,
         "name": o.full_name,
         "email": o.user.email if o.user else None,
@@ -95,6 +111,10 @@ def detail(owner_id: str, current_user: User = Depends(get_current_user), db: Se
         "roles": [r.code for r in o.user.roles] if o.user else [],
         "created_at": o.created_at,
     }
+    return success_response(
+        message="Lấy dữ liệu thành công",
+        data=data
+    )
 
 @router.post("/deactivate/{owner_id}")
 def deactivate(owner_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -103,7 +123,9 @@ def deactivate(owner_id: str, current_user: User = Depends(get_current_user), db
     o = service.deactivate_owner(owner_id)
     if not o:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
-    return {"success": True, "message": "Ngưng hoạt động thành công", "statusCode": 200}
+    return success_response(
+        message="Ngưng hoạt động chủ cửa hàng thành công"
+    )
 
 @router.post("/activate/{owner_id}")
 def activate(owner_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
@@ -112,4 +134,6 @@ def activate(owner_id: str, current_user: User = Depends(get_current_user), db: 
     o = service.activate_owner(owner_id)
     if not o:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
-    return {"success": True, "message": "Kích hoạt thành công", "statusCode": 200}
+    return success_response(
+        message="Kích hoạt chủ cửa hàng thành công"
+    )
