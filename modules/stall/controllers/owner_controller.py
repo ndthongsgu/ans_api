@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from models.user import User
-from modules.auth.controllers.customer_controller import get_current_user
+from modules.auth.controllers.owner_controller import get_current_user
 from modules.stall.dto.owner_dto import (
 	CreateStallContentRequest,
 	CreateStallRequest,

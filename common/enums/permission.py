@@ -1,8 +1,8 @@
-from ast import List, Dict
+from typing import List, Dict
 from common.enums.permissionCode import PermissionCode
 
 
-class Permission: List[Dict] = [
+Permission: List[Dict] = [
     # ===== AREA =====
     {
         "code": PermissionCode.AREA_VIEW,

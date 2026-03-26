@@ -3,6 +3,7 @@ import time
 
 from sqlalchemy.orm import Session
 
+from common.enums.language import LanguageCode
 from models.owner import Owner
 from models.stall import Stall
 from models.stallContent import StallContent
@@ -14,6 +15,7 @@ from modules.stall.dto.owner_dto import (
 	UpdateStallContentRequest,
 	UpdateStallRequest,
 )
+from utils.translation_util import TranslationService
 
 
 class ServiceError(Exception):
@@ -25,6 +27,7 @@ class ServiceError(Exception):
 class OwnerStallService:
 	def __init__(self, db: Session):
 		self.db = db
+		self.translator = TranslationService()
 
 	def _ensure_owner(self, user_id: str) -> Owner:
 		owner = self.db.query(Owner).filter(Owner.user_id == user_id).first()
@@ -45,14 +48,110 @@ class OwnerStallService:
 	def _serialize_opening_hours(self, opening_hours) -> str | None:
 		if opening_hours is None:
 			return None
+		if isinstance(opening_hours, str):
+			return opening_hours
 		return json.dumps([item.model_dump() for item in opening_hours], ensure_ascii=False)
+
+	def _normalize_price_range(self, value) -> str | None:
+		if value is None:
+			return None
+		return str(value)
 
 	def _normalize_language_code(self, language_code: str | None) -> str:
 		if language_code is None:
 			return "vi"
 		return language_code.strip().lower()
 
-	def _parse_opening_hours(self, opening_hours: str | None) -> list[dict] | None:
+	def _ensure_supported_language(self, language_code: str) -> str:
+		normalized = self._normalize_language_code(language_code)
+		if not LanguageCode.is_supported(normalized):
+			raise ServiceError("invalid_language_code")
+		return normalized
+
+	def _resolve_target_languages(self, source_language: str, target_languages: list[str] | None) -> list[str]:
+		if target_languages is None:
+			return [code for code in LanguageCode.codes() if code != source_language]
+
+		resolved: list[str] = []
+		for code in target_languages:
+			normalized = self._ensure_supported_language(code)
+			if normalized != source_language and normalized not in resolved:
+				resolved.append(normalized)
+
+		return resolved
+
+	def _upsert_content(
+		self,
+		stall_id: str,
+		language_code: str,
+		title: str,
+		description: str | None,
+		short_description: str | None,
+		audio_url: str,
+		audio_duration: int | None,
+		audio_file_size: int | None,
+		tts_script: str | None,
+		version: int,
+		is_deleted: bool,
+		now: int,
+	) -> StallContent:
+		content = (
+			self.db.query(StallContent)
+			.filter(
+				StallContent.stall_id == stall_id,
+				StallContent.language_code == language_code,
+			)
+			.first()
+		)
+
+		if not content:
+			content = StallContent(
+				stall_id=stall_id,
+				language_code=language_code,
+				title=title,
+				description=description,
+				short_description=short_description,
+				audio_url=audio_url,
+				audio_duration=audio_duration,
+				audio_file_size=audio_file_size,
+				tts_script=tts_script,
+				version=version,
+				is_deleted=is_deleted,
+				created_at=now,
+				updated_at=now,
+			)
+			self.db.add(content)
+			return content
+
+		content.title = title
+		content.description = description
+		content.short_description = short_description
+		content.audio_url = audio_url
+		content.audio_duration = audio_duration
+		content.audio_file_size = audio_file_size
+		content.tts_script = tts_script
+		content.version = version
+		content.is_deleted = is_deleted
+		content.updated_at = now
+		return content
+
+	def _translate_for_language(
+		self,
+		source_language: str,
+		target_language: str,
+		title: str,
+		description: str | None,
+		short_description: str | None,
+		tts_script: str | None,
+	) -> dict:
+		return {
+			"title": self.translator.translate_text(title, source_language, target_language) or title,
+			"description": self.translator.translate_text(description, source_language, target_language),
+			"short_description": self.translator.translate_text(short_description, source_language, target_language),
+			"tts_script": self.translator.translate_text(tts_script, source_language, target_language),
+		}
+
+	def _parse_opening_hours(self, opening_hours: str | None) -> list[dict] | str | None:
 		if not opening_hours:
 			return None
 
@@ -61,47 +160,47 @@ class OwnerStallService:
 			if isinstance(parsed, list):
 				return parsed
 		except json.JSONDecodeError:
-			return None
+			return opening_hours
 
 		return None
 
 	def _to_response(self, stall: Stall) -> StallResponse:
 		return StallResponse(
 			id=stall.id,
-			ownerId=stall.owner_id,
+			owner_id=stall.owner_id,
 			name=stall.name,
 			latitude=stall.latitude,
 			longitude=stall.longitude,
 			radius=stall.radius,
-			coverImage=stall.cover_image,
-			contactPhone=stall.contact_phone,
+			cover_image=stall.cover_image,
+			contact_phone=stall.contact_phone,
 			website=stall.website,
-			openingHours=self._parse_opening_hours(stall.opening_hours),
+			opening_hours=self._parse_opening_hours(stall.opening_hours),
+			close_hours=stall.close_hours,
 			category=stall.category,
-			priceRange=stall.price_range,
-			averageRating=float(stall.average_rating or 0),
-			totalReviews=int(stall.total_reviews or 0),
-			status=bool(stall.status),
-			createdAt=stall.created_at,
-			updatedAt=stall.updated_at,
+			price_range=stall.price_range,
+			average_rating=float(stall.average_rating or 0),
+			total_reviews=int(stall.total_reviews or 0),
+			created_at=stall.created_at,
+			updated_at=stall.updated_at,
 		)
 
 	def _to_content_response(self, content: StallContent) -> StallContentResponse:
 		return StallContentResponse(
 			id=content.id,
-			stallId=content.stall_id,
-			languageCode=content.language_code,
+			stall_id=content.stall_id,
+			language_code=content.language_code,
 			title=content.title,
 			description=content.description,
-			shortDescription=content.short_description,
-			audioUrl=content.audio_url,
-			audioDuration=content.audio_duration,
-			audioFileSize=content.audio_file_size,
-			ttsScript=content.tts_script,
+			short_description=content.short_description,
+			audio_url=content.audio_url,
+			audio_duration=content.audio_duration,
+			audio_file_size=content.audio_file_size,
+			tts_script=content.tts_script,
 			version=content.version,
-			isActive=not content.is_deleted,
-			createdAt=content.created_at,
-			updatedAt=content.updated_at,
+			is_active=not content.is_deleted,
+			created_at=content.created_at,
+			updated_at=content.updated_at,
 		)
 
 	def _get_owned_content(self, owner_id: str, stall_id: str, content_id: str) -> StallContent:
@@ -147,13 +246,13 @@ class OwnerStallService:
 			latitude=payload.latitude,
 			longitude=payload.longitude,
 			radius=payload.radius,
-			cover_image=payload.coverImage,
-			contact_phone=payload.contactPhone,
+			cover_image=payload.cover_image,
+			contact_phone=payload.contact_phone,
 			website=payload.website,
-			opening_hours=self._serialize_opening_hours(payload.openingHours),
+			opening_hours=self._serialize_opening_hours(payload.opening_hours),
+			close_hours=payload.close_hours,
 			category=payload.category,
-			price_range=payload.priceRange,
-			status=True,
+			price_range=self._normalize_price_range(payload.price_range),
 			created_at=now,
 			updated_at=now,
 		)
@@ -180,20 +279,20 @@ class OwnerStallService:
 			stall.longitude = changes["longitude"]
 		if "radius" in changes:
 			stall.radius = changes["radius"]
-		if "coverImage" in changes:
-			stall.cover_image = changes["coverImage"]
-		if "contactPhone" in changes:
-			stall.contact_phone = changes["contactPhone"]
+		if "cover_image" in changes:
+			stall.cover_image = changes["cover_image"]
+		if "contact_phone" in changes:
+			stall.contact_phone = changes["contact_phone"]
 		if "website" in changes:
 			stall.website = changes["website"]
-		if "openingHours" in changes:
-			stall.opening_hours = self._serialize_opening_hours(changes["openingHours"])
+		if "opening_hours" in changes:
+			stall.opening_hours = self._serialize_opening_hours(changes["opening_hours"])
+		if "close_hours" in changes:
+			stall.close_hours = changes["close_hours"]
 		if "category" in changes:
 			stall.category = changes["category"]
-		if "priceRange" in changes:
-			stall.price_range = changes["priceRange"]
-		if "status" in changes:
-			stall.status = changes["status"]
+		if "price_range" in changes:
+			stall.price_range = self._normalize_price_range(changes["price_range"])
 
 		stall.updated_at = int(time.time())
 		self.db.commit()
@@ -222,30 +321,57 @@ class OwnerStallService:
 		self._get_owned_stall(owner.id, stall_id)
 
 		title = payload.title.strip()
-		audio_url = payload.audioUrl.strip()
+		audio_url = payload.audio_url.strip()
 		if not title:
 			raise ServiceError("invalid_stall_content_title")
 		if not audio_url:
 			raise ServiceError("invalid_audio_url")
 
+		source_language = self._ensure_supported_language(payload.language_code)
+
 		now = int(time.time())
-		content = StallContent(
+		content = self._upsert_content(
 			stall_id=stall_id,
-			language_code=self._normalize_language_code(payload.languageCode),
+			language_code=source_language,
 			title=title,
 			description=payload.description,
-			short_description=payload.shortDescription,
+			short_description=payload.short_description,
 			audio_url=audio_url,
-			audio_duration=payload.audioDuration,
-			audio_file_size=payload.audioFileSize,
-			tts_script=payload.ttsScript,
+			audio_duration=payload.audio_duration,
+			audio_file_size=payload.audio_file_size,
+			tts_script=payload.tts_script,
 			version=payload.version,
-			is_deleted=not payload.isActive,
-			created_at=now,
-			updated_at=now,
+			is_deleted=not payload.is_active,
+			now=now,
 		)
 
-		self.db.add(content)
+		if payload.auto_translate:
+			target_languages = self._resolve_target_languages(source_language, payload.target_languages)
+			for language in target_languages:
+				translated = self._translate_for_language(
+					source_language=source_language,
+					target_language=language,
+					title=title,
+					description=payload.description,
+					short_description=payload.short_description,
+					tts_script=payload.tts_script,
+				)
+
+				self._upsert_content(
+					stall_id=stall_id,
+					language_code=language,
+					title=translated["title"],
+					description=translated["description"],
+					short_description=translated["short_description"],
+					audio_url=audio_url,
+					audio_duration=payload.audio_duration,
+					audio_file_size=payload.audio_file_size,
+					tts_script=translated["tts_script"],
+					version=payload.version,
+					is_deleted=not payload.is_active,
+					now=now,
+				)
+
 		self.db.commit()
 		self.db.refresh(content)
 		return self._to_content_response(content)
@@ -262,8 +388,10 @@ class OwnerStallService:
 		content = self._get_owned_content(owner.id, stall_id, content_id)
 
 		changes = payload.model_dump(exclude_unset=True)
-		if "languageCode" in changes and changes["languageCode"] is not None:
-			content.language_code = self._normalize_language_code(changes["languageCode"])
+		effective_language = content.language_code
+		if "language_code" in changes and changes["language_code"] is not None:
+			effective_language = self._ensure_supported_language(changes["language_code"])
+			content.language_code = effective_language
 		if "title" in changes and changes["title"] is not None:
 			title = changes["title"].strip()
 			if not title:
@@ -271,25 +399,55 @@ class OwnerStallService:
 			content.title = title
 		if "description" in changes:
 			content.description = changes["description"]
-		if "shortDescription" in changes:
-			content.short_description = changes["shortDescription"]
-		if "audioUrl" in changes and changes["audioUrl"] is not None:
-			audio_url = changes["audioUrl"].strip()
+		if "short_description" in changes:
+			content.short_description = changes["short_description"]
+		if "audio_url" in changes and changes["audio_url"] is not None:
+			audio_url = changes["audio_url"].strip()
 			if not audio_url:
 				raise ServiceError("invalid_audio_url")
 			content.audio_url = audio_url
-		if "audioDuration" in changes:
-			content.audio_duration = changes["audioDuration"]
-		if "audioFileSize" in changes:
-			content.audio_file_size = changes["audioFileSize"]
-		if "ttsScript" in changes:
-			content.tts_script = changes["ttsScript"]
+		if "audio_duration" in changes:
+			content.audio_duration = changes["audio_duration"]
+		if "audio_file_size" in changes:
+			content.audio_file_size = changes["audio_file_size"]
+		if "tts_script" in changes:
+			content.tts_script = changes["tts_script"]
 		if "version" in changes:
 			content.version = changes["version"]
-		if "isActive" in changes:
-			content.is_deleted = not changes["isActive"]
+		if "is_active" in changes:
+			content.is_deleted = not changes["is_active"]
 
 		content.updated_at = int(time.time())
+
+		should_translate = bool(changes.get("auto_translate"))
+		target_languages = changes.get("target_languages")
+		if should_translate:
+			resolved_targets = self._resolve_target_languages(effective_language, target_languages)
+			for language in resolved_targets:
+				translated = self._translate_for_language(
+					source_language=effective_language,
+					target_language=language,
+					title=content.title,
+					description=content.description,
+					short_description=content.short_description,
+					tts_script=content.tts_script,
+				)
+
+				self._upsert_content(
+					stall_id=stall_id,
+					language_code=language,
+					title=translated["title"],
+					description=translated["description"],
+					short_description=translated["short_description"],
+					audio_url=content.audio_url,
+					audio_duration=content.audio_duration,
+					audio_file_size=content.audio_file_size,
+					tts_script=translated["tts_script"],
+					version=content.version,
+					is_deleted=content.is_deleted,
+					now=content.updated_at,
+				)
+
 		self.db.commit()
 		self.db.refresh(content)
 		return self._to_content_response(content)

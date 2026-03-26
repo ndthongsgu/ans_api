@@ -8,7 +8,7 @@ from modules.actionLog.controllers.admin_controller import router as action_log_
 from core.database import engine, Base
 
 # Create tables
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine) 
 
 app = FastAPI()
 
