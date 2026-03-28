@@ -37,3 +37,6 @@ class TokenResponse(BaseModel):
     accessToken: str
     refreshToken: str
 
+class DeviceLoginRequest(BaseModel):
+    device_id: str
+

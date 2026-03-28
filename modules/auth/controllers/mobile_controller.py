@@ -10,6 +10,8 @@ from models.user import User
 from utils.security import create_access_token, create_refresh_token, jwt, SECRET_KEY, ALGORITHM
 from fastapi import Header
 from utils.i18n import t
+from modules.auth.dto.mobile_dto import DeviceLoginRequest
+
 
 router = APIRouter(prefix="/auth")
 
@@ -158,3 +160,15 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db), accept_langu
         raise HTTPException(status_code=401, detail=t('token_expired', accept_language))
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail=t('invalid_token', accept_language))
+
+@router.post("/login-device", response_model=TokenResponse)
+def login_device(payload: DeviceLoginRequest, db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+    locale = accept_language
+    service = MobileService(db)
+    user = service.login_or_create_by_device(payload.device_id)
+    if not user:
+        raise HTTPException(status_code=500, detail="Lỗi khi tạo tài khoản")
+
+    access = create_access_token(user.id)
+    refresh = create_refresh_token(user.id)
+    return {"accessToken": access, "refreshToken": refresh}

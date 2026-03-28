@@ -8,6 +8,7 @@ from google.auth.transport import requests
 from google.oauth2 import id_token
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 class ServiceError(Exception):
@@ -108,7 +109,11 @@ class MobileService:
 
     def get_customer_profile(self, user_id: str):
         customer = self.db.query(Customer).filter(Customer.user_id == user_id).first()
-        customer.email = self.db.query(User).filter(User.id == user_id).first().email
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return None
+        if customer:
+            customer.email = user.email
         return customer
 
     def verify_google_token(self, id_token_str: str) -> dict:
@@ -162,4 +167,31 @@ class MobileService:
                 self.db.add(customer)
                 self.db.commit()
 
+        return user
+
+    def login_or_create_by_device(self, device_id: str):
+        user = self.db.query(User).filter(User.device_id == device_id).first()
+        if not user:
+            user = User(
+                username=f"user_{device_id[:8]}",
+                device_id=device_id,
+                password_hash=hash_password(device_id),
+                is_admin=False,
+                created_at=int(time.time())
+            )
+            self.db.add(user)
+            self.db.flush()
+
+            customer = Customer(user_id=user.id, full_name=f"Device User {device_id[:8]}")
+            self.db.add(customer)
+            self.db.commit()
+            self.db.refresh(user)
+            return user
+        
+        customer = self.db.query(Customer).filter(Customer.user_id == user.id).first()
+        if not customer:
+            customer = Customer(user_id=user.id, full_name=user.username)
+            self.db.add(customer)
+            self.db.commit()
+        
         return user
