@@ -5,7 +5,7 @@ from core.database import get_db
 from modules.auth.services.mobile_service import MobileService, ServiceError
 from modules.auth.services.verification_service import VerificationService, VerificationError
 from modules.auth.services.password_reset_service import PasswordResetService, PasswordResetError
-from modules.auth.dto.mobile_dto import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, VerifyRequest, ForgotPasswordRequest, ResetPasswordRequest
+from modules.auth.dto.mobile_dto import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, VerifyRequest, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, UpdateProfileRequest
 from models.user import User
 from utils.security import create_access_token, create_refresh_token, jwt, SECRET_KEY, ALGORITHM
 from fastapi import Header
@@ -105,6 +105,46 @@ def reset_password(payload: ResetPasswordRequest, accept_language: str | None = 
         raise HTTPException(status_code=400, detail=t(e.code, locale))
 
     return {"message": t('reset_success', locale)}
+
+@router.post('/change-password')
+def change_password(
+    payload: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    accept_language: str | None = Header(None),
+):
+    locale = accept_language
+    service = MobileService(db)
+    try:
+        service.change_password(current_user.id, payload.current_password, payload.new_password)
+    except ServiceError as e:
+        raise HTTPException(status_code=400, detail=t(e.code, locale))
+
+    return {"message": t('change_password_success', locale)}
+
+
+@router.post('/update-profile')
+def update_profile(
+    payload: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    accept_language: str | None = Header(None),
+):
+    locale = accept_language
+    service = MobileService(db)
+    try:
+        data = service.update_profile(
+            current_user.id,
+            full_name=payload.full_name,
+            email=payload.email,
+            phone=payload.phone,
+            avatar_url=payload.avatar_url,
+        )
+    except ServiceError as e:
+        raise HTTPException(status_code=400, detail=t(e.code, locale))
+
+    return {"message": t('update_profile_success', locale), "data": data}
+
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):

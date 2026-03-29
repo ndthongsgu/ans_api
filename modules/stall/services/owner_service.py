@@ -88,6 +88,9 @@ class OwnerStallService:
 		)
 
 	def _to_content_response(self, content: StallContent) -> StallContentResponse:
+		translation = None
+		if content.translations:
+			translation = content.translations[0]
 		return StallContentResponse(
 			id=content.id,
 			stallId=content.stall_id,
@@ -95,10 +98,10 @@ class OwnerStallService:
 			title=content.title,
 			description=content.description,
 			shortDescription=content.short_description,
-			audioUrl=content.audio_url,
-			audioDuration=content.audio_duration,
-			audioFileSize=content.audio_file_size,
-			ttsScript=content.tts_script,
+			audioUrl=translation.audio_url if translation else None,
+			audioDuration=translation.audio_duration if translation else None,
+			audioFileSize=translation.audio_file_size if translation else None,
+			ttsScript=translation.tts_script if translation else content.tts_script,
 			version=content.version,
 			isActive=not content.is_deleted,
 			createdAt=content.created_at,
@@ -245,9 +248,6 @@ class OwnerStallService:
 			title=title,
 			description=payload.description,
 			short_description=payload.shortDescription,
-			audio_url=audio_url,
-			audio_duration=payload.audioDuration,
-			audio_file_size=payload.audioFileSize,
 			tts_script=payload.ttsScript,
 			version=payload.version,
 			is_deleted=not payload.isActive,
@@ -256,6 +256,19 @@ class OwnerStallService:
 		)
 
 		self.db.add(content)
+		self.db.flush()
+
+		# add translation record for language with audio info
+		translation = StallContentTranslation(
+			stall_content_id=content.id,
+			language_code=self._normalize_language_code(payload.languageCode),
+			audio_url=audio_url,
+			audio_duration=payload.audioDuration,
+			audio_file_size=payload.audioFileSize,
+			tts_script=payload.ttsScript,
+		)
+		self.db.add(translation)
+
 		self.db.commit()
 		self.db.refresh(content)
 		return self._to_content_response(content)
@@ -283,17 +296,32 @@ class OwnerStallService:
 			content.description = changes["description"]
 		if "shortDescription" in changes:
 			content.short_description = changes["shortDescription"]
+		language_code = content.language_code
+		translation = self.db.query(StallContentTranslation).filter(
+			StallContentTranslation.stall_content_id == content.id,
+			StallContentTranslation.language_code == language_code
+		).first()
+		if not translation:
+			translation = StallContentTranslation(
+				stall_content_id=content.id,
+				language_code=language_code,
+			)
+			self.db.add(translation)
+
 		if "audioUrl" in changes and changes["audioUrl"] is not None:
 			audio_url = changes["audioUrl"].strip()
 			if not audio_url:
 				raise ServiceError("invalid_audio_url")
-			content.audio_url = audio_url
+			translation.audio_url = audio_url
 		if "audioDuration" in changes:
-			content.audio_duration = changes["audioDuration"]
+			translation.audio_duration = changes["audioDuration"]
 		if "audioFileSize" in changes:
-			content.audio_file_size = changes["audioFileSize"]
+			translation.audio_file_size = changes["audioFileSize"]
 		if "ttsScript" in changes:
-			content.tts_script = changes["ttsScript"]
+			translation.tts_script = changes["ttsScript"]
+		if "languageCode" in changes and changes["languageCode"] is not None:
+			content.language_code = self._normalize_language_code(changes["languageCode"])
+			translation.language_code = content.language_code
 		if "version" in changes:
 			content.version = changes["version"]
 		if "isActive" in changes:

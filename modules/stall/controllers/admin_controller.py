@@ -161,45 +161,16 @@ async def create(
 @router.put("/{stall_id}")
 async def update(
     stall_id: str,
+    req: StallUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     accept_language: str | None = Header(None),
-    owner_id: Optional[str] = Form(None),
-    name: Optional[str] = Form(None),
-    latitude: Optional[float] = Form(None),
-    longitude: Optional[float] = Form(None),
-    radius: Optional[float] = Form(None),
-    category: Optional[str] = Form(None),
-    price_range: Optional[str] = Form(None),
-    opening_hours: Optional[str] = Form(None),
-    contact_phone: Optional[str] = Form(None),
-    website: Optional[str] = Form(None),
 ):
     ensure_admin(current_user, accept_language)
     service = StallService(db)
-    
+
     # Build update data (without image handling - use dedicated endpoint for images)
-    stall_data = {}
-    if owner_id is not None:
-        stall_data["owner_id"] = owner_id
-    if name is not None:
-        stall_data["name"] = name
-    if latitude is not None:
-        stall_data["latitude"] = latitude
-    if longitude is not None:
-        stall_data["longitude"] = longitude
-    if radius is not None:
-        stall_data["radius"] = radius
-    if category is not None:
-        stall_data["category"] = category
-    if price_range is not None:
-        stall_data["price_range"] = price_range
-    if opening_hours is not None:
-        stall_data["opening_hours"] = opening_hours
-    if contact_phone is not None:
-        stall_data["contact_phone"] = contact_phone
-    if website is not None:
-        stall_data["website"] = website
+    stall_data = req.dict(exclude_unset=True)
     
     try:
         s = service.update_stall(stall_id, stall_data)

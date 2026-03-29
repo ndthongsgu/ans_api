@@ -27,10 +27,10 @@ class StallCreate(BaseModel):
 
 class StallUpdate(BaseModel):
     owner_id: Optional[str] = None
-    name: str
-    latitude: float
-    longitude: float
-    radius: Optional[int] = 50
+    name: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    radius: Optional[int] = None
     cover_image: Optional[str] = None
     category: Optional[str] = None
     price_range: Optional[str] = None

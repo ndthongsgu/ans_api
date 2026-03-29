@@ -30,6 +30,16 @@ class ResetPasswordRequest(BaseModel):
     otp: str
     new_password: str
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+class UpdateProfileRequest(BaseModel):
+    full_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    avatar_url: str | None = None
+
 class GoogleLoginRequest(BaseModel):
     idToken: str
 

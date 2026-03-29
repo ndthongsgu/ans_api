@@ -41,14 +41,18 @@ class StallContentMobileService:
         for c in contents:
             trans = self._get_content_translation(c.id, language_code)
             
-            # Use translation if available, otherwise use content's direct fields
-            audio_url = trans.audio_url if trans else c.audio_url
+            # Use translation if available, otherwise fall back to content's direct fields
+            audio_url = trans.audio_url if trans else None
             tts_script = trans.tts_script if trans else c.tts_script
+            audio_duration = trans.audio_duration if trans else None
+            audio_file_size = trans.audio_file_size if trans else None
             
             result_item = {
                 "id": c.id,
                 "audio_url": audio_url,
                 "tts_script": tts_script,
+                "audio_duration": audio_duration,
+                "audio_file_size": audio_file_size,
                 "language_code": language_code,
             }
             
@@ -74,8 +78,8 @@ class StallContentMobileService:
         result = {
             "id": content.id,
             "stall_id": content.stall_id,
-            "audio_duration": content.audio_duration,
-            "audio_file_size": content.audio_file_size,
+            "audio_duration": trans.audio_duration if trans else None,
+            "audio_file_size": trans.audio_file_size if trans else None,
             "created_at": content.created_at,
             "updated_at": content.updated_at,
         }
@@ -86,8 +90,8 @@ class StallContentMobileService:
             result["tts_script"] = trans.tts_script
             result["language_code"] = trans.language_code
         else:
-            # Fallback to direct content audio_url if no translation
-            result["audio_url"] = content.audio_url
+            # Fallback to content-level script
+            result["audio_url"] = None
             result["tts_script"] = content.tts_script
             result["language_code"] = language_code
         
@@ -143,7 +147,6 @@ class StallContentMobileService:
                 results.append({
                     "id": content.id,
                     "stall_id": content.stall_id,
-                    "type": content.type,
                     "audio_url": trans.audio_url,
                     "tts_script": trans.tts_script,
                     "language_code": trans.language_code,

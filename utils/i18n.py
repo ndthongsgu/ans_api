@@ -24,6 +24,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'token_expired': 'Token expired',
         'user_not_found': 'User not found',
         'profile_not_found': 'Profile not found',
+        'update_profile_success': 'Profile updated successfully',
         'forbidden': 'Forbidden',
         'not_found': 'Not found',
         'package_not_found': 'Package not found',
@@ -38,6 +39,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'delete_success': 'Deleted successfully',
         'activate_success': 'Activated successfully',
         'deactivate_success': 'Deactivated successfully',
+        'change_password_success': 'Password changed successfully',
     },
     'vi': {
         'otp_subject': '[ANS] Xác thực email',
@@ -61,6 +63,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'token_expired': 'Token đã hết hạn',
         'user_not_found': 'Không tìm thấy người dùng',
         'profile_not_found': 'Không tìm thấy hồ sơ',
+        'update_profile_success': 'Cập nhật thông tin cá nhân thành công',
         'forbidden': 'Không có quyền truy cập',
         'not_found': 'Không tìm thấy',
         'package_not_found': 'Không tìm thấy gói',
@@ -75,6 +78,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'delete_success': 'Xóa thành công',
         'activate_success': 'Kích hoạt thành công',
         'deactivate_success': 'Ngưng hoạt động thành công',
+        'change_password_success': 'Đổi mật khẩu thành công',
     },
     'ko': {
         'otp_subject': '[ANS] 이메일 인증',
