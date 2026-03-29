@@ -141,6 +141,15 @@ class OwnerStallService:
 		if not name:
 			raise ServiceError("invalid_stall_name")
 
+		# Check owner subscription package stall limit
+		stall_count = self.db.query(Stall).filter(Stall.owner_id == owner.id).count()
+		if owner.subscription_package is not None:
+			if stall_count >= owner.subscription_package.max_stalls:
+				raise ServiceError("stall_limit_reached")
+		else:
+			if stall_count >= 3:
+				raise ServiceError("stall_limit_reached")
+
 		now = int(time.time())
 		stall = Stall(
 			owner_id=owner.id,
