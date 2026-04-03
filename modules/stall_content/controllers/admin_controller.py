@@ -44,8 +44,6 @@ def paginate(req: StallContentPageRequest, current_user: User = Depends(get_curr
             "stall_id": c.stall_id,
             "stall_name": c.stall.name if c.stall else None,
             "audio_url": vi_trans.audio_url if vi_trans else c.audio_url,
-            "audio_duration": c.audio_duration,
-            "audio_file_size": c.audio_file_size,
             "tts_script": vi_trans.tts_script if vi_trans else c.tts_script,
             "version": c.version,
             "is_deleted": c.is_deleted,
@@ -121,14 +119,14 @@ def create(content: StallContentCreate, current_user: User = Depends(get_current
         status_code=201
     )
 
-@router.put("/{stall_id}")
-def update(stall_id: str, content: StallContentUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+@router.put("/{content_id}")
+def update(content_id: str, content: StallContentUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = StallContentService(db)
     try:
         # When user updates Vietnamese content with new tts_script
         # Service will update all language versions automatically
-        updated_contents = service.update_stall_content(stall_id, content.dict())
+        updated_contents = service.update_stall_content(content_id, content.dict())
         
         if not updated_contents:
             raise HTTPException(status_code=404, detail="Không tìm thấy nội dung cho quán này")
@@ -234,8 +232,6 @@ def detail(content_id: str, current_user: User = Depends(get_current_user), db: 
             "name": c.stall.name,
         } if c.stall else None,
         "audio_url": vi_trans.audio_url if vi_trans else c.audio_url,
-        "audio_duration": c.audio_duration,
-        "audio_file_size": c.audio_file_size,
         "tts_script": vi_trans.tts_script if vi_trans else c.tts_script,
         "version": c.version,
         "is_deleted": c.is_deleted,
@@ -260,24 +256,24 @@ def detail(content_id: str, current_user: User = Depends(get_current_user), db: 
         data=data
     )
 
-@router.post("/deactivate/{stall_id}")
-def deactivate(stall_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+@router.post("/deactivate/{content_id}")
+def deactivate(content_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = StallContentService(db)
-    c = service.deactivate_stall_content(stall_id)
+    c = service.deactivate_stall_content(content_id)
     if not c:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
     return success_response(
-        message="Ngưng hoạt động nội dung cửa hàng thành công (tất cả ngôn ngữ)"
+        message="Ngưng hoạt động nội dung cửa hàng thành công"
     )
 
-@router.post("/activate/{stall_id}")
-def activate(stall_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
+@router.post("/activate/{content_id}")
+def activate(content_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = StallContentService(db)
-    c = service.activate_stall_content(stall_id)
+    c = service.activate_stall_content(content_id)
     if not c:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
     return success_response(
-        message="Kích hoạt nội dung cửa hàng thành công (tất cả ngôn ngữ)"
+        message="Kích hoạt nội dung cửa hàng thành công"
     )

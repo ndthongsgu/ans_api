@@ -8,6 +8,7 @@ from modules.stall.controllers.admin_controller import router as stall_router
 from modules.stall_content.controllers.admin_controller import router as stall_content_router
 from modules.permission.controllers.admin_controller import router as permission_router
 from modules.notification.controllers.admin_controller import router as notification_router
+from modules.subscriptionPackage.controllers.admin_controller import router as subscription_package_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -19,3 +20,4 @@ router.include_router(stall_router)
 router.include_router(stall_content_router)
 router.include_router(permission_router)
 router.include_router(notification_router)
+router.include_router(subscription_package_router)

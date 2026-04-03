@@ -3,6 +3,7 @@ from models.owner import Owner
 from models.user import User
 from models.role import Role
 from models.userRole import UserRole
+from models.subscription_package import SubscriptionPackage
 from utils.security import hash_password
 import time
 from typing import Tuple, List
@@ -64,6 +65,11 @@ class OwnerService:
             ur = UserRole(user_id=user.id, role_id=owner_role.id, code=owner_role.code)
             self.db.add(ur)
         
+        # resolve subscription package
+        subscription_package = None
+        if data.get('subscription_package_id'):
+            subscription_package = self.db.query(SubscriptionPackage).filter(SubscriptionPackage.id == data['subscription_package_id'], SubscriptionPackage.is_deleted == False).first()
+
         # Create owner profile
         owner = Owner(
             user_id=user.id,
@@ -71,6 +77,7 @@ class OwnerService:
             phone=data.get('phone'),
             business_name=data.get('business_name'),
             business_address=data.get('business_address'),
+            subscription_package_id=subscription_package.id if subscription_package else None,
             created_at=int(time.time())
         )
         self.db.add(owner)
@@ -97,7 +104,11 @@ class OwnerService:
         owner.phone = data.get('phone')
         owner.business_name = data.get('business_name')
         owner.business_address = data.get('business_address')
-        
+
+        if data.get('subscription_package_id'):
+            subscription_package = self.db.query(SubscriptionPackage).filter(SubscriptionPackage.id == data['subscription_package_id'], SubscriptionPackage.is_deleted == False).first()
+            owner.subscription_package_id = subscription_package.id if subscription_package else None
+
         self.db.commit()
         return owner
 

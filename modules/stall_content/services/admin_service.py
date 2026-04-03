@@ -56,6 +56,8 @@ class StallContentService:
             stall_content_id=stall_content_id,
             language_code=language_code,
             audio_url=audio_data['audio_url'],
+            audio_duration=audio_data.get('audio_duration'),
+            audio_file_size=audio_data.get('audio_file_size'),
             tts_script=tts_script,
         )
         
@@ -130,25 +132,19 @@ class StallContentService:
                         pass
             raise RuntimeError(f"Failed to create multilingual content: {str(e)}")
 
-    def update_stall_content(self, stall_id: str, data: dict):
+    def update_stall_content(self, content_id: str, data: dict):
         """
         Update multilingual StallContent
         
-        If tts_script is provided, updates all language translation records for this stall
-        with translated scripts and regenerated audio files
+        If tts_script is provided, updates all language translation records for this content id
+        with translated scripts and regenerated audio files.
         """
-        # Find all existing content records for this stall
-        existing_contents = self.db.query(StallContent).filter(
-            StallContent.stall_id == stall_id
-        ).all()
-        
-        if not existing_contents:
+        # Find content by content_id
+        content = self.get_stall_content(content_id)
+        if not content:
             return None
         
-        # Use first content record (should be only one per stall now)
-        content = existing_contents[0]
-        
-        logger.info(f"Updating stall content for stall_id={stall_id}, content_id={content.id}")
+        logger.info(f"Updating stall content for stall_id={content.stall_id}, content_id={content.id}")
         
         tts_script_vi = data.get('tts_script')
         
@@ -192,6 +188,8 @@ class StallContentService:
                         
                         # Update existing translation
                         trans.audio_url = audio_data['audio_url']
+                        trans.audio_duration = audio_data.get('audio_duration')
+                        trans.audio_file_size = audio_data.get('audio_file_size')
                         trans.tts_script = tts_script
                         trans.updated_at = int(time.time())
                     else:
@@ -200,6 +198,8 @@ class StallContentService:
                             stall_content_id=content.id,
                             language_code=lang_code,
                             audio_url=audio_data['audio_url'],
+                            audio_duration=audio_data.get('audio_duration'),
+                            audio_file_size=audio_data.get('audio_file_size'),
                             tts_script=tts_script,
                         )
                         self.db.add(trans)
@@ -210,7 +210,7 @@ class StallContentService:
                 
                 self.db.commit()
                 logger.info(f"Successfully updated translations for content_id={content.id}")
-                return existing_contents
+                return [content]
             except Exception as e:
                 logger.error(f"Failed to update multilingual content: {str(e)}")
                 self.db.rollback()
@@ -219,33 +219,33 @@ class StallContentService:
             # If no tts_script provided, just update other fields if needed
             content.updated_at = int(time.time())
             self.db.commit()
-            return existing_contents
+            return [content]
 
-    def deactivate_stall_content(self, stall_id: str):
-        """Deactivate stall content (single record per stall now)"""
-        contents = self.db.query(StallContent).filter(
-            StallContent.stall_id == stall_id
-        ).all()
-        
-        for content in contents:
-            content.is_deleted = True
-            content.updated_at = int(time.time())
-        
-        self.db.commit()
-        return contents
+    def deactivate_stall_content(self, content_id: str):
+        """Deactivate a single stall content by content_id"""
+        content = self.db.query(StallContent).filter(
+            StallContent.id == content_id
+        ).first()
+        if not content:
+            return None
 
-    def activate_stall_content(self, stall_id: str):
-        """Activate stall content (single record per stall now)"""
-        contents = self.db.query(StallContent).filter(
-            StallContent.stall_id == stall_id
-        ).all()
-        
-        for content in contents:
-            content.is_deleted = False
-            content.updated_at = int(time.time())
-        
+        content.is_deleted = True
+        content.updated_at = int(time.time())
         self.db.commit()
-        return contents
+        return content
+
+    def activate_stall_content(self, content_id: str):
+        """Activate a single stall content by content_id"""
+        content = self.db.query(StallContent).filter(
+            StallContent.id == content_id
+        ).first()
+        if not content:
+            return None
+
+        content.is_deleted = False
+        content.updated_at = int(time.time())
+        self.db.commit()
+        return content
 
     def list_all_active(self):
         return self.db.query(StallContent).filter(StallContent.is_deleted == False).all()

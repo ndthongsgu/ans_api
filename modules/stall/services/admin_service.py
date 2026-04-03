@@ -142,7 +142,10 @@ class StallService:
         
         # Update optional fields
         if data.get('radius') is not None:
-            stall.radius = int(data['radius'])
+            try:
+                stall.radius = int(data['radius'])
+            except (ValueError, TypeError):
+                raise RuntimeError("Radius phải là số nguyên")
         if data.get('cover_image') is not None:
             stall.cover_image = data['cover_image']
         if data.get('category') is not None:
@@ -155,7 +158,7 @@ class StallService:
             stall.contact_phone = data['contact_phone']
         if data.get('website') is not None:
             stall.website = data['website']
-        
+
         stall.updated_at = int(time.time())
         
         # Update Vietnamese translation if name or category provided

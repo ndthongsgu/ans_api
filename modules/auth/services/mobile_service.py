@@ -8,6 +8,7 @@ from google.auth.transport import requests
 from google.oauth2 import id_token
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 class ServiceError(Exception):
@@ -85,16 +86,29 @@ class MobileService:
             created_at=int(time.time())
         )
         self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
+        try:
+            self.db.commit()
+            self.db.refresh(user)
+        except Exception as exc:
+            self.db.rollback()
+            # map common duplicate key errors
+            if 'Duplicate entry' in str(exc) and 'users.username' in str(exc):
+                raise ServiceError('username_exists')
+            if 'Duplicate entry' in str(exc) and 'users.email' in str(exc):
+                raise ServiceError('email_exists')
+            raise ServiceError('create_user_failed')
 
         customer = Customer(
             user_id=user.id,
             full_name=full_name
         )
         self.db.add(customer)
-        self.db.commit()
-        self.db.refresh(customer)
+        try:
+            self.db.commit()
+            self.db.refresh(customer)
+        except Exception as exc:
+            self.db.rollback()
+            raise ServiceError('create_customer_failed')
 
         return user, customer
 
@@ -106,10 +120,72 @@ class MobileService:
         self.db.commit()
         return user
 
+    def change_password(self, user_id: str, current_password: str, new_password: str):
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise ServiceError('user_not_found')
+
+        if not user.password_hash:
+            raise ServiceError('invalid_credentials')
+
+        if not verify_password(current_password, user.password_hash):
+            raise ServiceError('invalid_credentials')
+
+        user.password_hash = hash_password(new_password)
+        self.db.commit()
+        return user
+
     def get_customer_profile(self, user_id: str):
         customer = self.db.query(Customer).filter(Customer.user_id == user_id).first()
-        customer.email = self.db.query(User).filter(User.id == user_id).first().email
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return None
+        if customer:
+            customer.email = user.email
         return customer
+
+    def update_profile(self, user_id: str, full_name: str | None = None, email: str | None = None, phone: str | None = None, avatar_url: str | None = None):
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise ServiceError('user_not_found')
+
+        if email and email != user.email:
+            if self.find_by_email(email):
+                raise ServiceError('email_exists')
+            if self.find_by_username(email) and self.find_by_username(email).id != user_id:
+                raise ServiceError('username_exists')
+            user.email = email
+            user.username = email
+
+        customer = self.db.query(Customer).filter(Customer.user_id == user_id).first()
+        if full_name:
+            if customer:
+                customer.full_name = full_name
+            else:
+                customer = Customer(user_id=user_id, full_name=full_name)
+                self.db.add(customer)
+        if phone is not None:
+            if customer:
+                customer.phone = phone
+        if avatar_url is not None:
+            if customer:
+                customer.avatar_url = avatar_url
+
+        self.db.add(user)
+        if customer:
+            self.db.add(customer)
+
+        try:
+            self.db.commit()
+        except Exception as exc:
+            self.db.rollback()
+            if 'Duplicate entry' in str(exc) and 'users.email' in str(exc):
+                raise ServiceError('email_exists')
+            if 'Duplicate entry' in str(exc) and 'users.username' in str(exc):
+                raise ServiceError('username_exists')
+            raise ServiceError('update_profile_failed')
+
+        return {'email': user.email, 'full_name': customer.full_name if customer else None, 'phone': customer.phone if customer else None, 'avatar_url': customer.avatar_url if customer else None}
 
     def verify_google_token(self, id_token_str: str) -> dict:
         """Verify Google ID token and return user info"""
@@ -162,4 +238,31 @@ class MobileService:
                 self.db.add(customer)
                 self.db.commit()
 
+        return user
+
+    def login_or_create_by_device(self, device_id: str):
+        user = self.db.query(User).filter(User.device_id == device_id).first()
+        if not user:
+            user = User(
+                username=f"user_{device_id[:8]}",
+                device_id=device_id,
+                password_hash=hash_password(device_id),
+                is_admin=False,
+                created_at=int(time.time())
+            )
+            self.db.add(user)
+            self.db.flush()
+
+            customer = Customer(user_id=user.id, full_name=f"Device User {device_id[:8]}")
+            self.db.add(customer)
+            self.db.commit()
+            self.db.refresh(user)
+            return user
+        
+        customer = self.db.query(Customer).filter(Customer.user_id == user.id).first()
+        if not customer:
+            customer = Customer(user_id=user.id, full_name=user.username)
+            self.db.add(customer)
+            self.db.commit()
+        
         return user
