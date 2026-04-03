@@ -5,11 +5,8 @@ from core.database import get_db
 from models.user import User
 from modules.auth.controllers.owner_controller import get_current_user
 from modules.stall.dto.owner_dto import (
-	CreateStallContentRequest,
 	CreateStallRequest,
-	StallContentResponse,
 	StallResponse,
-	UpdateStallContentRequest,
 	UpdateStallRequest,
 )
 from modules.stall.services.owner_service import OwnerStallService, ServiceError
@@ -89,65 +86,5 @@ def update_stall(
 		return service.update_stall(current_user.id, stall_id, payload)
 	except ServiceError as exc:
 		if exc.code in {"profile_not_found", "stall_not_found"}:
-			raise HTTPException(status_code=404, detail=t(exc.code, locale))
-		raise HTTPException(status_code=400, detail=t(exc.code, locale))
-
-
-@router.get("/{stall_id}/contents", response_model=list[StallContentResponse])
-def list_stall_contents(
-	stall_id: str,
-	current_user: User = Depends(get_current_user),
-	db: Session = Depends(get_db),
-	accept_language: str | None = Header(None),
-):
-	locale = accept_language
-	_ensure_owner_role(current_user, locale)
-	service = OwnerStallService(db)
-
-	try:
-		return service.list_stall_contents(current_user.id, stall_id)
-	except ServiceError as exc:
-		if exc.code in {"profile_not_found", "stall_not_found"}:
-			raise HTTPException(status_code=404, detail=t(exc.code, locale))
-		raise HTTPException(status_code=400, detail=t(exc.code, locale))
-
-
-@router.post("/{stall_id}/contents", response_model=StallContentResponse)
-def create_stall_content(
-	stall_id: str,
-	payload: CreateStallContentRequest,
-	current_user: User = Depends(get_current_user),
-	db: Session = Depends(get_db),
-	accept_language: str | None = Header(None),
-):
-	locale = accept_language
-	_ensure_owner_role(current_user, locale)
-	service = OwnerStallService(db)
-
-	try:
-		return service.create_stall_content(current_user.id, stall_id, payload)
-	except ServiceError as exc:
-		if exc.code in {"profile_not_found", "stall_not_found"}:
-			raise HTTPException(status_code=404, detail=t(exc.code, locale))
-		raise HTTPException(status_code=400, detail=t(exc.code, locale))
-
-
-@router.put("/{stall_id}/contents/{content_id}", response_model=StallContentResponse)
-def update_stall_content(
-	stall_id: str,
-	content_id: str,
-	payload: UpdateStallContentRequest,
-	current_user: User = Depends(get_current_user),
-	db: Session = Depends(get_db),
-	accept_language: str | None = Header(None),
-):
-	locale = accept_language
-	_ensure_owner_role(current_user, locale)
-	service = OwnerStallService(db)
-
-	try:
-		return service.update_stall_content(current_user.id, stall_id, content_id, payload)
-	except ServiceError as exc:
-		if exc.code in {"profile_not_found", "stall_not_found", "stall_content_not_found"}:
 			raise HTTPException(status_code=404, detail=t(exc.code, locale))
 		raise HTTPException(status_code=400, detail=t(exc.code, locale))

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 
 
 class OpeningHourItem(BaseModel):
@@ -27,6 +27,29 @@ class CreateStallRequest(BaseModel):
 	contact_phone: str | None = Field(default=None, max_length=20)
 	website: str | None = Field(default=None, max_length=255)
 
+	@field_validator("cover_image", mode="before")
+	@classmethod
+	def normalize_cover_image(cls, value):
+		if value is None:
+			return None
+
+		if isinstance(value, str):
+			return value
+
+		if isinstance(value, dict):
+			if not value:
+				return None
+
+			for key in ("data_url", "url", "value", "base64"):
+				candidate = value.get(key)
+				if isinstance(candidate, str):
+					if key == "base64":
+						mime = value.get("mime_type") or "image/jpeg"
+						return f"data:{mime};base64,{candidate}"
+					return candidate
+
+		return None
+
 
 class UpdateStallRequest(BaseModel):
 	name: str | None = Field(default=None, min_length=1, max_length=255)
@@ -40,6 +63,29 @@ class UpdateStallRequest(BaseModel):
 	price_range: str | int | None = None
 	contact_phone: str | None = Field(default=None, max_length=20)
 	website: str | None = Field(default=None, max_length=255)
+
+	@field_validator("cover_image", mode="before")
+	@classmethod
+	def normalize_cover_image(cls, value):
+		if value is None:
+			return None
+
+		if isinstance(value, str):
+			return value
+
+		if isinstance(value, dict):
+			if not value:
+				return None
+
+			for key in ("data_url", "url", "value", "base64"):
+				candidate = value.get(key)
+				if isinstance(candidate, str):
+					if key == "base64":
+						mime = value.get("mime_type") or "image/jpeg"
+						return f"data:{mime};base64,{candidate}"
+					return candidate
+
+		return None
 
 
 class StallResponse(BaseModel):
@@ -58,52 +104,5 @@ class StallResponse(BaseModel):
 	price_range: str | int | None = None
 	average_rating: float
 	total_reviews: int
-	created_at: int
-	updated_at: int | None = None
-
-
-class CreateStallContentRequest(BaseModel):
-	language_code: str = Field(default="vi", min_length=2, max_length=10)
-	title: str = Field(min_length=1, max_length=255)
-	description: str | None = None
-	short_description: str | None = Field(default=None, max_length=500)
-	audio_url: str = Field(min_length=1, max_length=500)
-	audio_duration: int | None = Field(default=None, ge=0)
-	audio_file_size: int | None = Field(default=None, ge=0)
-	tts_script: str | None = None
-	version: int = Field(default=1, ge=1)
-	is_active: bool = True
-	auto_translate: bool = False
-	target_languages: list[str] | None = None
-
-
-class UpdateStallContentRequest(BaseModel):
-	language_code: str | None = Field(default=None, min_length=2, max_length=10)
-	title: str | None = Field(default=None, min_length=1, max_length=255)
-	description: str | None = None
-	short_description: str | None = Field(default=None, max_length=500)
-	audio_url: str | None = Field(default=None, min_length=1, max_length=500)
-	audio_duration: int | None = Field(default=None, ge=0)
-	audio_file_size: int | None = Field(default=None, ge=0)
-	tts_script: str | None = None
-	version: int | None = Field(default=None, ge=1)
-	is_active: bool | None = None
-	auto_translate: bool | None = None
-	target_languages: list[str] | None = None
-
-
-class StallContentResponse(BaseModel):
-	id: str
-	stall_id: str
-	language_code: str
-	title: str
-	description: str | None = None
-	short_description: str | None = None
-	audio_url: str
-	audio_duration: int | None = None
-	audio_file_size: int | None = None
-	tts_script: str | None = None
-	version: int
-	is_active: bool
 	created_at: int
 	updated_at: int | None = None

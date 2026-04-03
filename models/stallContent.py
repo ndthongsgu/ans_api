@@ -1,10 +1,13 @@
-from sqlalchemy import (Column, String, Integer, Text, ForeignKey)
+from sqlalchemy import (Column, String, Integer, Text, ForeignKey, UniqueConstraint)
 from sqlalchemy.orm import relationship
 from models.base import BaseModel
 
 
 class StallContent(BaseModel):
     __tablename__ = "stall_contents"
+    __table_args__ = (
+        UniqueConstraint("stall_id", name="uq_stall_contents_stall_id"),
+    )
 
     stall_id = Column(String(36), ForeignKey("stalls.id"), nullable=False)
 

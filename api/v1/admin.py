@@ -5,7 +5,7 @@ from modules.customer.controllers.admin_controller import router as customer_rou
 from modules.role.controllers.admin_controller import router as role_router
 from modules.owner.controllers.admin_controller import router as owner_router
 from modules.stall.controllers.admin_controller import router as stall_router
-from modules.stallContent.controllers.admin_controller import router as stall_content_router
+from modules.stall_content.controllers.admin_controller import router as stall_content_router
 from modules.permission.controllers.admin_controller import router as permission_router
 from modules.notification.controllers.admin_controller import router as notification_router
 

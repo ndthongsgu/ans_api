@@ -1,21 +1,22 @@
+import base64
+import binascii
+import hashlib
 import json
 import time
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
+from sqlalchemy.exc import DataError
 from sqlalchemy.orm import Session
 
-from common.enums.language import LanguageCode
+from core import config
 from models.owner import Owner
 from models.stall import Stall
-from models.stallContent import StallContent
 from modules.stall.dto.owner_dto import (
-	CreateStallContentRequest,
 	CreateStallRequest,
-	StallContentResponse,
 	StallResponse,
-	UpdateStallContentRequest,
 	UpdateStallRequest,
 )
-from utils.translation_util import TranslationService
 
 
 class ServiceError(Exception):
@@ -23,11 +24,83 @@ class ServiceError(Exception):
 		self.code = code
 		super().__init__(code)
 
-
 class OwnerStallService:
 	def __init__(self, db: Session):
 		self.db = db
-		self.translator = TranslationService()
+
+	def _upload_cover_image_to_cloudinary(self, data_uri: str) -> str:
+		cloud_name = config.CLOUDINARY_CLOUD_NAME.strip()
+		if not cloud_name:
+			raise ServiceError("invalid_cover_image")
+
+		upload_url = f"https://api.cloudinary.com/v1_1/{cloud_name}/image/upload"
+		timestamp = int(time.time())
+		params = {
+			"file": data_uri,
+			"folder": config.CLOUDINARY_FOLDER,
+		}
+
+		upload_preset = config.CLOUDINARY_UPLOAD_PRESET.strip()
+		api_key = config.CLOUDINARY_API_KEY.strip()
+		api_secret = config.CLOUDINARY_API_SECRET.strip()
+
+		if upload_preset:
+			params["upload_preset"] = upload_preset
+		elif api_key and api_secret:
+			sign_parts = [f"folder={config.CLOUDINARY_FOLDER}", f"timestamp={timestamp}"]
+			signature_payload = "&".join(sign_parts) + api_secret
+			signature = hashlib.sha1(signature_payload.encode("utf-8")).hexdigest()
+			params["api_key"] = api_key
+			params["timestamp"] = timestamp
+			params["signature"] = signature
+		else:
+			raise ServiceError("invalid_cover_image")
+
+		encoded = urlencode(params).encode("utf-8")
+		request = Request(upload_url, data=encoded, method="POST")
+		request.add_header("Content-Type", "application/x-www-form-urlencoded")
+
+		try:
+			with urlopen(request, timeout=20) as response:
+				payload = json.loads(response.read().decode("utf-8"))
+		except Exception:
+			raise ServiceError("invalid_cover_image")
+
+		secure_url = payload.get("secure_url")
+		if not isinstance(secure_url, str) or not secure_url.strip():
+			raise ServiceError("invalid_cover_image")
+		return secure_url
+
+	def _normalize_cover_image(self, cover_image: str | None) -> str | None:
+		if cover_image is None:
+			return None
+
+		value = cover_image.strip()
+		if not value:
+			return None
+
+		# Accept data URI images and persist them as static files.
+		if value.startswith("data:image/") and ";base64," in value:
+			header, encoded = value.split(",", 1)
+			ext = header[len("data:image/"):].split(";")[0].lower()
+			ext = "jpg" if ext == "jpeg" else ext
+			if ext not in {"png", "jpg", "gif", "webp", "svg+xml"}:
+				raise ServiceError("invalid_cover_image")
+
+			file_ext = "svg" if ext == "svg+xml" else ext
+			try:
+				binary = base64.b64decode(encoded, validate=True)
+			except (binascii.Error, ValueError):
+				raise ServiceError("invalid_cover_image")
+
+			# Keep uploads bounded to avoid abusive payloads.
+			if len(binary) > 10 * 1024 * 1024:
+				raise ServiceError("invalid_cover_image")
+
+			# Upload to Cloudinary and keep the secure URL in database.
+			return self._upload_cover_image_to_cloudinary(value)
+
+		return value
 
 	def _ensure_owner(self, user_id: str) -> Owner:
 		owner = self.db.query(Owner).filter(Owner.user_id == user_id).first()
@@ -56,100 +129,6 @@ class OwnerStallService:
 		if value is None:
 			return None
 		return str(value)
-
-	def _normalize_language_code(self, language_code: str | None) -> str:
-		if language_code is None:
-			return LanguageCode.DEFAULT
-		return language_code.strip().lower()
-
-	def _ensure_supported_language(self, language_code: str) -> str:
-		normalized = self._normalize_language_code(language_code)
-		if not LanguageCode.is_supported(normalized):
-			raise ServiceError("invalid_language_code")
-		return normalized
-
-	def _resolve_target_languages(self, source_language: str, target_languages: list[str] | None) -> list[str]:
-		if target_languages is None:
-			return [code for code in LanguageCode.codes() if code != source_language]
-
-		resolved: list[str] = []
-		for code in target_languages:
-			normalized = self._ensure_supported_language(code)
-			if normalized != source_language and normalized not in resolved:
-				resolved.append(normalized)
-
-		return resolved
-
-	def _upsert_content(
-		self,
-		stall_id: str,
-		language_code: str,
-		title: str,
-		description: str | None,
-		short_description: str | None,
-		audio_url: str,
-		audio_duration: int | None,
-		audio_file_size: int | None,
-		tts_script: str | None,
-		version: int,
-		is_deleted: bool,
-		now: int,
-	) -> StallContent:
-		content = (
-			self.db.query(StallContent)
-			.filter(
-				StallContent.stall_id == stall_id,
-				StallContent.language_code == language_code,
-			)
-			.first()
-		)
-
-		if not content:
-			content = StallContent(
-				stall_id=stall_id,
-				language_code=language_code,
-				title=title,
-				description=description,
-				short_description=short_description,
-				audio_url=audio_url,
-				audio_duration=audio_duration,
-				audio_file_size=audio_file_size,
-				tts_script=tts_script,
-				version=version,
-				is_deleted=is_deleted,
-				created_at=now,
-				updated_at=now,
-			)
-			self.db.add(content)
-			return content
-
-		content.title = title
-		content.description = description
-		content.short_description = short_description
-		content.audio_url = audio_url
-		content.audio_duration = audio_duration
-		content.audio_file_size = audio_file_size
-		content.tts_script = tts_script
-		content.version = version
-		content.is_deleted = is_deleted
-		content.updated_at = now
-		return content
-
-	def _translate_for_language(
-		self,
-		source_language: str,
-		target_language: str,
-		title: str,
-		description: str | None,
-		short_description: str | None,
-		tts_script: str | None,
-	) -> dict:
-		return {
-			"title": self.translator.translate_text(title, source_language, target_language) or title,
-			"description": self.translator.translate_text(description, source_language, target_language),
-			"short_description": self.translator.translate_text(short_description, source_language, target_language),
-			"tts_script": self.translator.translate_text(tts_script, source_language, target_language),
-		}
 
 	def _parse_opening_hours(self, opening_hours: str | None) -> list[dict] | str | None:
 		if not opening_hours:
@@ -185,39 +164,6 @@ class OwnerStallService:
 			updated_at=stall.updated_at,
 		)
 
-	def _to_content_response(self, content: StallContent) -> StallContentResponse:
-		return StallContentResponse(
-			id=content.id,
-			stall_id=content.stall_id,
-			language_code=content.language_code,
-			title=content.title,
-			description=content.description,
-			short_description=content.short_description,
-			audio_url=content.audio_url,
-			audio_duration=content.audio_duration,
-			audio_file_size=content.audio_file_size,
-			tts_script=content.tts_script,
-			version=content.version,
-			is_active=not content.is_deleted,
-			created_at=content.created_at,
-			updated_at=content.updated_at,
-		)
-
-	def _get_owned_content(self, owner_id: str, stall_id: str, content_id: str) -> StallContent:
-		content = (
-			self.db.query(StallContent)
-			.join(Stall, Stall.id == StallContent.stall_id)
-			.filter(
-				StallContent.id == content_id,
-				StallContent.stall_id == stall_id,
-				Stall.owner_id == owner_id,
-			)
-			.first()
-		)
-		if not content:
-			raise ServiceError("stall_content_not_found")
-		return content
-
 	def list_stalls(self, user_id: str) -> list[StallResponse]:
 		owner = self._ensure_owner(user_id)
 		stalls = (
@@ -238,15 +184,16 @@ class OwnerStallService:
 		name = payload.name.strip()
 		if not name:
 			raise ServiceError("invalid_stall_name")
-
 		now = int(time.time())
+		cover_image = self._normalize_cover_image(payload.cover_image)
+
 		stall = Stall(
 			owner_id=owner.id,
 			name=name,
 			latitude=payload.latitude,
 			longitude=payload.longitude,
 			radius=payload.radius,
-			cover_image=payload.cover_image,
+			cover_image=cover_image,
 			contact_phone=payload.contact_phone,
 			website=payload.website,
 			opening_hours=self._serialize_opening_hours(payload.opening_hours),
@@ -258,7 +205,13 @@ class OwnerStallService:
 		)
 
 		self.db.add(stall)
-		self.db.commit()
+		try:
+			self.db.commit()
+		except DataError as exc:
+			self.db.rollback()
+			if "cover_image" in str(exc).lower():
+				raise ServiceError("invalid_cover_image")
+			raise ServiceError("invalid_stall_payload")
 		self.db.refresh(stall)
 		return self._to_response(stall)
 
@@ -280,7 +233,7 @@ class OwnerStallService:
 		if "radius" in changes:
 			stall.radius = changes["radius"]
 		if "cover_image" in changes:
-			stall.cover_image = changes["cover_image"]
+			stall.cover_image = self._normalize_cover_image(changes["cover_image"])
 		if "contact_phone" in changes:
 			stall.contact_phone = changes["contact_phone"]
 		if "website" in changes:
@@ -295,159 +248,12 @@ class OwnerStallService:
 			stall.price_range = self._normalize_price_range(changes["price_range"])
 
 		stall.updated_at = int(time.time())
-		self.db.commit()
+		try:
+			self.db.commit()
+		except DataError as exc:
+			self.db.rollback()
+			if "cover_image" in str(exc).lower():
+				raise ServiceError("invalid_cover_image")
+			raise ServiceError("invalid_stall_payload")
 		self.db.refresh(stall)
 		return self._to_response(stall)
-
-	def list_stall_contents(self, user_id: str, stall_id: str) -> list[StallContentResponse]:
-		owner = self._ensure_owner(user_id)
-		self._get_owned_stall(owner.id, stall_id)
-
-		contents = (
-			self.db.query(StallContent)
-			.filter(StallContent.stall_id == stall_id)
-			.order_by(StallContent.created_at.desc())
-			.all()
-		)
-		return [self._to_content_response(content) for content in contents]
-
-	def create_stall_content(
-		self,
-		user_id: str,
-		stall_id: str,
-		payload: CreateStallContentRequest,
-	) -> StallContentResponse:
-		owner = self._ensure_owner(user_id)
-		self._get_owned_stall(owner.id, stall_id)
-
-		title = payload.title.strip()
-		audio_url = payload.audio_url.strip()
-		if not title:
-			raise ServiceError("invalid_stall_content_title")
-		if not audio_url:
-			raise ServiceError("invalid_audio_url")
-
-		source_language = self._ensure_supported_language(payload.language_code)
-
-		now = int(time.time())
-		content = self._upsert_content(
-			stall_id=stall_id,
-			language_code=source_language,
-			title=title,
-			description=payload.description,
-			short_description=payload.short_description,
-			audio_url=audio_url,
-			audio_duration=payload.audio_duration,
-			audio_file_size=payload.audio_file_size,
-			tts_script=payload.tts_script,
-			version=payload.version,
-			is_deleted=not payload.is_active,
-			now=now,
-		)
-
-		if payload.auto_translate:
-			target_languages = self._resolve_target_languages(source_language, payload.target_languages)
-			for language in target_languages:
-				translated = self._translate_for_language(
-					source_language=source_language,
-					target_language=language,
-					title=title,
-					description=payload.description,
-					short_description=payload.short_description,
-					tts_script=payload.tts_script,
-				)
-
-				self._upsert_content(
-					stall_id=stall_id,
-					language_code=language,
-					title=translated["title"],
-					description=translated["description"],
-					short_description=translated["short_description"],
-					audio_url=audio_url,
-					audio_duration=payload.audio_duration,
-					audio_file_size=payload.audio_file_size,
-					tts_script=translated["tts_script"],
-					version=payload.version,
-					is_deleted=not payload.is_active,
-					now=now,
-				)
-
-		self.db.commit()
-		self.db.refresh(content)
-		return self._to_content_response(content)
-
-	def update_stall_content(
-		self,
-		user_id: str,
-		stall_id: str,
-		content_id: str,
-		payload: UpdateStallContentRequest,
-	) -> StallContentResponse:
-		owner = self._ensure_owner(user_id)
-		self._get_owned_stall(owner.id, stall_id)
-		content = self._get_owned_content(owner.id, stall_id, content_id)
-
-		changes = payload.model_dump(exclude_unset=True)
-		effective_language = content.language_code
-		if "language_code" in changes and changes["language_code"] is not None:
-			effective_language = self._ensure_supported_language(changes["language_code"])
-			content.language_code = effective_language
-		if "title" in changes and changes["title"] is not None:
-			title = changes["title"].strip()
-			if not title:
-				raise ServiceError("invalid_stall_content_title")
-			content.title = title
-		if "description" in changes:
-			content.description = changes["description"]
-		if "short_description" in changes:
-			content.short_description = changes["short_description"]
-		if "audio_url" in changes and changes["audio_url"] is not None:
-			audio_url = changes["audio_url"].strip()
-			if not audio_url:
-				raise ServiceError("invalid_audio_url")
-			content.audio_url = audio_url
-		if "audio_duration" in changes:
-			content.audio_duration = changes["audio_duration"]
-		if "audio_file_size" in changes:
-			content.audio_file_size = changes["audio_file_size"]
-		if "tts_script" in changes:
-			content.tts_script = changes["tts_script"]
-		if "version" in changes:
-			content.version = changes["version"]
-		if "is_active" in changes:
-			content.is_deleted = not changes["is_active"]
-
-		content.updated_at = int(time.time())
-
-		should_translate = bool(changes.get("auto_translate"))
-		target_languages = changes.get("target_languages")
-		if should_translate:
-			resolved_targets = self._resolve_target_languages(effective_language, target_languages)
-			for language in resolved_targets:
-				translated = self._translate_for_language(
-					source_language=effective_language,
-					target_language=language,
-					title=content.title,
-					description=content.description,
-					short_description=content.short_description,
-					tts_script=content.tts_script,
-				)
-
-				self._upsert_content(
-					stall_id=stall_id,
-					language_code=language,
-					title=translated["title"],
-					description=translated["description"],
-					short_description=translated["short_description"],
-					audio_url=content.audio_url,
-					audio_duration=content.audio_duration,
-					audio_file_size=content.audio_file_size,
-					tts_script=translated["tts_script"],
-					version=content.version,
-					is_deleted=content.is_deleted,
-					now=content.updated_at,
-				)
-
-		self.db.commit()
-		self.db.refresh(content)
-		return self._to_content_response(content)
