@@ -37,4 +37,3 @@ class SubscriptionPackageOut(BaseModel):
     description: Optional[str] = None
     created_at: int
     updated_at: Optional[int] = None
-

@@ -17,6 +17,11 @@ class Owner(BaseModel):
 
     user = relationship("User", back_populates="owner")
     subscription_package = relationship("SubscriptionPackage", back_populates="owners")
+    subscription_transactions = relationship(
+        "SubscriptionTransaction",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+    )
 
     stalls = relationship(
         "Stall",

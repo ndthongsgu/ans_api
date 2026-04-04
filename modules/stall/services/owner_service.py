@@ -79,7 +79,7 @@ class OwnerStallService:
 		if not value:
 			return None
 
-		# Accept data URI images and persist them as static files.
+		# Accept data URI images and upload to Cloudinary.
 		if value.startswith("data:image/") and ";base64," in value:
 			header, encoded = value.split(",", 1)
 			ext = header[len("data:image/"):].split(";")[0].lower()
@@ -87,7 +87,6 @@ class OwnerStallService:
 			if ext not in {"png", "jpg", "gif", "webp", "svg+xml"}:
 				raise ServiceError("invalid_cover_image")
 
-			file_ext = "svg" if ext == "svg+xml" else ext
 			try:
 				binary = base64.b64decode(encoded, validate=True)
 			except (binascii.Error, ValueError):
@@ -157,46 +156,12 @@ class OwnerStallService:
 			opening_hours=self._parse_opening_hours(stall.opening_hours),
 			close_hours=stall.close_hours,
 			category=stall.category,
-			priceRange=stall.price_range,
-			averageRating=float(stall.average_rating or 0),
-			totalReviews=int(stall.total_reviews or 0),
-			status=bool(stall.status),
-			createdAt=stall.created_at,
-			updatedAt=stall.updated_at,
+			price_range=stall.price_range,
+			average_rating=float(stall.average_rating or 0),
+			total_reviews=int(stall.total_reviews or 0),
+			created_at=stall.created_at,
+			updated_at=stall.updated_at,
 		)
-
-	def _to_content_response(self, content: StallContent) -> StallContentResponse:
-		return StallContentResponse(
-			id=content.id,
-			stallId=content.stall_id,
-			languageCode=content.language_code,
-			title=content.title,
-			description=content.description,
-			shortDescription=content.short_description,
-			audioUrl=content.audio_url,
-			audioDuration=content.audio_duration,
-			audioFileSize=content.audio_file_size,
-			ttsScript=content.tts_script,
-			version=content.version,
-			isActive=not content.is_deleted,
-			createdAt=content.created_at,
-			updatedAt=content.updated_at,
-		)
-
-	def _get_owned_content(self, owner_id: str, stall_id: str, content_id: str) -> StallContent:
-		content = (
-			self.db.query(StallContent)
-			.join(Stall, Stall.id == StallContent.stall_id)
-			.filter(
-				StallContent.id == content_id,
-				StallContent.stall_id == stall_id,
-				Stall.owner_id == owner_id,
-			)
-			.first()
-		)
-		if not content:
-			raise ServiceError("stall_content_not_found")
-		return content
 
 	def list_stalls(self, user_id: str) -> list[StallResponse]:
 		owner = self._ensure_owner(user_id)
@@ -292,97 +257,3 @@ class OwnerStallService:
 			raise ServiceError("invalid_stall_payload")
 		self.db.refresh(stall)
 		return self._to_response(stall)
-
-	def list_stall_contents(self, user_id: str, stall_id: str) -> list[StallContentResponse]:
-		owner = self._ensure_owner(user_id)
-		self._get_owned_stall(owner.id, stall_id)
-
-		contents = (
-			self.db.query(StallContent)
-			.filter(StallContent.stall_id == stall_id)
-			.order_by(StallContent.created_at.desc())
-			.all()
-		)
-		return [self._to_content_response(content) for content in contents]
-
-	def create_stall_content(
-		self,
-		user_id: str,
-		stall_id: str,
-		payload: CreateStallContentRequest,
-	) -> StallContentResponse:
-		owner = self._ensure_owner(user_id)
-		self._get_owned_stall(owner.id, stall_id)
-
-		title = payload.title.strip()
-		audio_url = payload.audioUrl.strip()
-		if not title:
-			raise ServiceError("invalid_stall_content_title")
-		if not audio_url:
-			raise ServiceError("invalid_audio_url")
-
-		now = int(time.time())
-		content = StallContent(
-			stall_id=stall_id,
-			language_code=self._normalize_language_code(payload.languageCode),
-			title=title,
-			description=payload.description,
-			short_description=payload.shortDescription,
-			audio_url=audio_url,
-			audio_duration=payload.audioDuration,
-			audio_file_size=payload.audioFileSize,
-			tts_script=payload.ttsScript,
-			version=payload.version,
-			is_deleted=not payload.isActive,
-			created_at=now,
-			updated_at=now,
-		)
-
-		self.db.add(content)
-		self.db.commit()
-		self.db.refresh(content)
-		return self._to_content_response(content)
-
-	def update_stall_content(
-		self,
-		user_id: str,
-		stall_id: str,
-		content_id: str,
-		payload: UpdateStallContentRequest,
-	) -> StallContentResponse:
-		owner = self._ensure_owner(user_id)
-		self._get_owned_stall(owner.id, stall_id)
-		content = self._get_owned_content(owner.id, stall_id, content_id)
-
-		changes = payload.model_dump(exclude_unset=True)
-		if "languageCode" in changes and changes["languageCode"] is not None:
-			content.language_code = self._normalize_language_code(changes["languageCode"])
-		if "title" in changes and changes["title"] is not None:
-			title = changes["title"].strip()
-			if not title:
-				raise ServiceError("invalid_stall_content_title")
-			content.title = title
-		if "description" in changes:
-			content.description = changes["description"]
-		if "shortDescription" in changes:
-			content.short_description = changes["shortDescription"]
-		if "audioUrl" in changes and changes["audioUrl"] is not None:
-			audio_url = changes["audioUrl"].strip()
-			if not audio_url:
-				raise ServiceError("invalid_audio_url")
-			content.audio_url = audio_url
-		if "audioDuration" in changes:
-			content.audio_duration = changes["audioDuration"]
-		if "audioFileSize" in changes:
-			content.audio_file_size = changes["audioFileSize"]
-		if "ttsScript" in changes:
-			content.tts_script = changes["ttsScript"]
-		if "version" in changes:
-			content.version = changes["version"]
-		if "isActive" in changes:
-			content.is_deleted = not changes["isActive"]
-
-		content.updated_at = int(time.time())
-		self.db.commit()
-		self.db.refresh(content)
-		return self._to_content_response(content)

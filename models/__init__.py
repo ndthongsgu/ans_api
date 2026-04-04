@@ -16,6 +16,7 @@ from .notification import Notification
 from .notificationTranslation import NotificationTranslation
 from .pending_upload import PendingUpload
 from .subscription_package import SubscriptionPackage
+from .subscription_transaction import SubscriptionTransaction
 from .audio_playback_rule import AudioPlaybackRule
 from .data_sync_metadata import DataSyncMetadata
 from .email_verification import EmailVerification

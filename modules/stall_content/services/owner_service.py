@@ -93,6 +93,8 @@ class OwnerStallContentService:
         content_id: str,
         language_code: str,
         audio_url: str,
+        audio_duration: int | None,
+        audio_file_size: int | None,
         tts_script: str | None,
         now: int,
     ) -> StallContentTranslation:
@@ -109,6 +111,8 @@ class OwnerStallContentService:
                 stall_content_id=content_id,
                 language_code=language_code,
                 audio_url=audio_url,
+                audio_duration=audio_duration,
+                audio_file_size=audio_file_size,
                 tts_script=tts_script,
                 created_at=now,
                 updated_at=now,
@@ -117,6 +121,8 @@ class OwnerStallContentService:
             return trans
 
         trans.audio_url = audio_url
+        trans.audio_duration = audio_duration
+        trans.audio_file_size = audio_file_size
         trans.tts_script = tts_script
         trans.updated_at = now
         return trans
@@ -132,9 +138,9 @@ class OwnerStallContentService:
             stall_id=content.stall_id,
             stall_name=content.stall.name if content.stall else None,
             language_code=trans.language_code if trans else language_code,
-            audio_url=trans.audio_url if trans else content.audio_url,
-            audio_duration=content.audio_duration,
-            audio_file_size=content.audio_file_size,
+            audio_url=trans.audio_url if trans else "",
+            audio_duration=trans.audio_duration if trans else None,
+            audio_file_size=trans.audio_file_size if trans else None,
             tts_script=trans.tts_script if trans else content.tts_script,
             is_deleted=content.is_deleted,
             created_at=content.created_at,
@@ -195,18 +201,12 @@ class OwnerStallContentService:
         )
 
         if source_content:
-            source_content.audio_url = audio_url
-            source_content.audio_duration = source_audio.get("audio_duration")
-            source_content.audio_file_size = source_audio.get("audio_file_size")
             source_content.tts_script = payload.tts_script
             source_content.is_deleted = False
             source_content.updated_at = now
         else:
             source_content = StallContent(
                 stall_id=payload.stall_id,
-                audio_url=audio_url,
-                audio_duration=source_audio.get("audio_duration"),
-                audio_file_size=source_audio.get("audio_file_size"),
                 tts_script=payload.tts_script,
             )
             self.db.add(source_content)
@@ -216,6 +216,8 @@ class OwnerStallContentService:
             content_id=source_content.id,
             language_code=source_language,
             audio_url=audio_url,
+            audio_duration=source_audio.get("audio_duration"),
+            audio_file_size=source_audio.get("audio_file_size"),
             tts_script=payload.tts_script,
             now=now,
         )
@@ -236,6 +238,8 @@ class OwnerStallContentService:
                     content_id=source_content.id,
                     language_code=language,
                     audio_url=translated_audio["audio_url"],
+                        audio_duration=translated_audio.get("audio_duration"),
+                        audio_file_size=translated_audio.get("audio_file_size"),
                     tts_script=translated_script,
                     now=now,
                 )
@@ -414,9 +418,6 @@ class OwnerStallContentService:
             audio_data = self._generate_audio_from_tts(update_lang, source_script)
 
             content.tts_script = source_script
-            content.audio_url = audio_data["audio_url"]
-            content.audio_duration = audio_data.get("audio_duration")
-            content.audio_file_size = audio_data.get("audio_file_size")
 
         content.updated_at = now
 
@@ -424,7 +425,9 @@ class OwnerStallContentService:
             self._upsert_translation(
                 content_id=content.id,
                 language_code=update_lang,
-                audio_url=content.audio_url,
+                audio_url=audio_data["audio_url"],
+                audio_duration=audio_data.get("audio_duration"),
+                audio_file_size=audio_data.get("audio_file_size"),
                 tts_script=content.tts_script,
                 now=now,
             )
@@ -437,6 +440,8 @@ class OwnerStallContentService:
                         content_id=content.id,
                         language_code=language,
                         audio_url=translated_audio["audio_url"],
+                        audio_duration=translated_audio.get("audio_duration"),
+                        audio_file_size=translated_audio.get("audio_file_size"),
                         tts_script=translated_script,
                         now=now,
                     )
