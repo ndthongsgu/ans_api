@@ -61,6 +61,7 @@ class StallService:
             radius=int(data.get('radius', 50)),
             cover_image=data.get('cover_image'),
             is_deleted=False,
+            status=True,
             category=data.get('category'),
             price_range=data.get('price_range'),
             opening_hours=data.get('opening_hours'),
@@ -158,6 +159,8 @@ class StallService:
             stall.contact_phone = data['contact_phone']
         if data.get('website') is not None:
             stall.website = data['website']
+        if data.get('status') is not None:
+            stall.status = data['status']
 
         stall.updated_at = int(time.time())
         
