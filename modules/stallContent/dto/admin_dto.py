@@ -13,18 +13,12 @@ class StallContentPageRequest(BaseModel):
 class StallContentCreate(BaseModel):
     stall_id: str
     language_code: Optional[str] = "vi"
-    audio_url: Optional[str] = None  # Optional if tts_script is provided
-    audio_duration: Optional[int] = None
-    audio_file_size: Optional[int] = None
     tts_script: Optional[str] = None  # TTS script for auto audio generation
     version: Optional[int] = 1
 
 class StallContentUpdate(BaseModel):
     stall_id: str
     language_code: Optional[str] = "vi"
-    audio_url: Optional[str] = None  # Optional if tts_script is provided
-    audio_duration: Optional[int] = None
-    audio_file_size: Optional[int] = None
     tts_script: Optional[str] = None  # TTS script for auto audio generation
     version: Optional[int] = 1
 

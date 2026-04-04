@@ -35,9 +35,13 @@ def generate_audio_from_text(text: str, language_code: str = "vi") -> dict:
         # Get file size
         file_size = audio_path.stat().st_size
         
-        # Get duration using pydub
-        audio = AudioSegment.from_mp3(str(audio_path))
-        duration_seconds = len(audio) // 1000  # Convert milliseconds to seconds
+        # Get duration using pydub (optional, may fail if FFmpeg not installed)
+        duration_seconds = None
+        try:
+            audio = AudioSegment.from_mp3(str(audio_path))
+            duration_seconds = len(audio) // 1000  # Convert milliseconds to seconds
+        except Exception as e:
+            print(f"Warning: Could not get audio duration: {str(e)}. Duration will be set to None.")
         
         return {
             "audio_url": f"/audios/{audio_filename}",
