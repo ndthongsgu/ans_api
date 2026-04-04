@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SubscriptionPackageResponse(BaseModel):
@@ -21,8 +21,7 @@ class SubscriptionPackageListResponse(BaseModel):
 
 class SubscriptionRegisterRequest(BaseModel):
     subscription_package_id: str = Field(min_length=1)
-    note: str | None = Field(default=None, max_length=500)
-
+    payment_method: str | None = Field(default=None)
 
 class SubscriptionTransactionResponse(BaseModel):
     id: str
@@ -58,5 +57,3 @@ class SubscriptionTransactionListResponse(BaseModel):
 class SubscriptionRegisterResponse(BaseModel):
     package: SubscriptionPackageResponse
     transaction: SubscriptionTransactionResponse
-    payment_url: str | None = None
-    qr_code_url: str | None = None

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from common.dto.response import success_response
@@ -63,6 +64,29 @@ def register_package(
     try:
         data = service.register_package(current_user.id, payload)
         return success_response(message="Tạo giao dịch thành công, vui lòng thanh toán", data=data, status_code=201)
+    except ServiceError as exc:
+        if exc.code in {"profile_not_found", "package_not_found"}:
+            raise HTTPException(status_code=404, detail=t(exc.code, locale))
+        raise HTTPException(status_code=400, detail=getattr(exc, "detail", None) or t(exc.code, locale))
+
+
+@router.post("/register/redirect")
+def register_package_redirect(
+    payload: SubscriptionRegisterRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    accept_language: str | None = Header(None),
+):
+    locale = accept_language
+    _ensure_owner_role(current_user, locale)
+    service = OwnerSubscriptionPackageService(db)
+
+    try:
+        data = service.register_package(current_user.id, payload)
+        payment_url = data.get("payment_url")
+        if not payment_url:
+            raise HTTPException(status_code=400, detail="payment_url_not_found")
+        return RedirectResponse(url=payment_url, status_code=303)
     except ServiceError as exc:
         if exc.code in {"profile_not_found", "package_not_found"}:
             raise HTTPException(status_code=404, detail=t(exc.code, locale))

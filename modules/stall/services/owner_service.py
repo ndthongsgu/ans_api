@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from core import config
 from models.owner import Owner
 from models.stall import Stall
+from models.subscription_package import SubscriptionPackage
 from modules.stall.dto.owner_dto import (
 	CreateStallRequest,
 	StallResponse,
@@ -117,6 +118,29 @@ class OwnerStallService:
 			raise ServiceError("stall_not_found")
 		return stall
 
+	def _get_stall_limit(self, owner: Owner) -> int:
+		# Owners without a subscription package can create at most 3 stalls.
+		default_limit = 3
+		if not owner.subscription_package_id:
+			return default_limit
+
+		package = (
+			self.db.query(SubscriptionPackage)
+			.filter(
+				SubscriptionPackage.id == owner.subscription_package_id,
+				SubscriptionPackage.is_deleted == False,
+			)
+			.first()
+		)
+		if not package:
+			return default_limit
+
+		try:
+			max_stalls = int(package.max_stalls or 0)
+		except (TypeError, ValueError):
+			max_stalls = 0
+		return max(max_stalls, default_limit)
+
 	def _serialize_opening_hours(self, opening_hours) -> str | None:
 		if opening_hours is None:
 			return None
@@ -180,6 +204,15 @@ class OwnerStallService:
 
 	def create_stall(self, user_id: str, payload: CreateStallRequest) -> StallResponse:
 		owner = self._ensure_owner(user_id)
+		limit = self._get_stall_limit(owner)
+		current_stalls = (
+			self.db.query(Stall)
+			.filter(Stall.owner_id == owner.id, Stall.is_deleted == False)
+			.count()
+		)
+		if current_stalls >= limit:
+			raise ServiceError("stall_limit_exceeded")
+
 		name = payload.name.strip()
 		if not name:
 			raise ServiceError("invalid_stall_name")

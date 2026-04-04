@@ -10,6 +10,9 @@ class StallContent(BaseModel):
     )
 
     stall_id = Column(String(36), ForeignKey("stalls.id"), nullable=False)
+    audio_url = Column(String(500), nullable=False)
+    audio_duration = Column(Integer, nullable=True)
+    audio_file_size = Column(Integer, nullable=True)
 
     tts_script = Column(Text)
     stall = relationship("Stall", back_populates="contents")

@@ -159,8 +159,11 @@ class OwnerSubscriptionPackageService:
             for key, value in params.items()
             if value is not None and str(value) != ""
         }
-        sorted_items = sorted(filtered_params.items())
-        return "&".join(f"{key}={quote_plus(value, safe='')}" for key, value in sorted_items)
+        sorted_params = dict(sorted(filtered_params.items()))
+        return "&".join(
+            f"{key}={quote_plus(str(value))}"
+            for key, value in sorted_params.items()
+)
 
     def _build_vnpay_secure_hash(self, params: dict) -> str:
         hash_data = self._build_vnpay_hash_data(params)
@@ -194,10 +197,13 @@ class OwnerSubscriptionPackageService:
             "vnp_ExpireDate": expire_date,
         }
 
+        query_string = self._build_vnpay_hash_data(request_data)
         secure_hash = self._build_vnpay_secure_hash(request_data)
-        query_string = urlencode(sorted(request_data.items()))
-        payment_url = f"{VNPAY_ENDPOINT}?{query_string}&vnp_SecureHash={secure_hash}"
-        return {"payUrl": payment_url, "qrCodeUrl": payment_url}
+        payment_url = (
+            f"{VNPAY_ENDPOINT}?{query_string}"
+            f"&vnp_SecureHash={secure_hash}"
+        )
+        return {"payUrl": payment_url}
 
     def register_package(self, user_id: str, payload: SubscriptionRegisterRequest) -> dict:
         owner = self._ensure_owner(user_id)
@@ -219,7 +225,6 @@ class OwnerSubscriptionPackageService:
             payment_status="pending",
             subscription_start_at=subscription_start_at,
             subscription_end_at=subscription_end_at,
-            note=payload.note,
             raw_payload=json.dumps(payload.model_dump(), ensure_ascii=False),
             created_at=now,
             updated_at=now,
@@ -239,7 +244,7 @@ class OwnerSubscriptionPackageService:
             raise
 
         transaction.payment_url = vnpay_response.get("payUrl")
-        transaction.qr_code_url = vnpay_response.get("qrCodeUrl") or vnpay_response.get("payUrl")
+        transaction.qr_code_url = vnpay_response.get("qrCodeUrl")
         transaction.vnpay_raw_response = json.dumps(vnpay_response, ensure_ascii=False)
         if not transaction.payment_url:
             transaction.payment_status = "failed"
@@ -253,8 +258,6 @@ class OwnerSubscriptionPackageService:
         return {
             "package": self._package_to_dict(package),
             "transaction": self._transaction_to_dict(transaction, package),
-            "payment_url": transaction.payment_url,
-            "qr_code_url": transaction.qr_code_url,
         }
 
     def handle_vnpay_ipn(self, payload: dict) -> dict:
