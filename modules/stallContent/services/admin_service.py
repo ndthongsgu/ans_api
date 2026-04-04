@@ -83,7 +83,6 @@ class StallContentService:
         # Create base StallContent record (without language-specific data)
         content = StallContent(
             stall_id=stall_id,
-            audio_url="",  # Initialize with empty string (required NOT NULL field)
             tts_script=tts_script_vi,  # Store Vietnamese script in base record
             created_at=int(time.time())
         )

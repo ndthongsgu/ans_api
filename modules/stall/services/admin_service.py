@@ -276,9 +276,6 @@ class StallService:
 
     def upload_stall_image(self, stall_id: str, image_url: str):
         """Update stall with new cover image URL"""
-        stall = self.get_stall(stall_id)
-        if not stall:
-            return None
         
         # Delete old image if it exists
         if stall.cover_image:
