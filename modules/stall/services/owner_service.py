@@ -127,7 +127,7 @@ class OwnerStallService:
 		owner = self._ensure_owner(user_id)
 		stalls = (
 			self.db.query(Stall)
-			.filter(Stall.owner_id == owner.id)
+			.filter(Stall.owner_id == owner.id, Stall.status == True)
 			.order_by(Stall.created_at.desc())
 			.all()
 		)
