@@ -9,7 +9,6 @@ class StallPageRequest(BaseModel):
     # filters
     name: Optional[str] = None
     owner_id: Optional[str] = None
-    status: Optional[bool] = None
     category: Optional[str] = None
 
 class StallCreate(BaseModel):
@@ -22,6 +21,7 @@ class StallCreate(BaseModel):
     category: Optional[str] = None
     price_range: Optional[str] = None
     opening_hours: Optional[str] = None
+    close_hours: Optional[str] = None
     contact_phone: Optional[str] = None
     website: Optional[str] = None
 
@@ -35,6 +35,7 @@ class StallUpdate(BaseModel):
     category: Optional[str] = None
     price_range: Optional[str] = None
     opening_hours: Optional[str] = None
+    close_hours: Optional[str] = None
     contact_phone: Optional[str] = None
     website: Optional[str] = None
 
@@ -46,10 +47,10 @@ class StallOut(BaseModel):
     longitude: float
     radius: int
     cover_image: Optional[str]
-    status: bool
     category: Optional[str]
     price_range: Optional[str]
     opening_hours: Optional[str]
+    close_hours: Optional[str]
     contact_phone: Optional[str]
     website: Optional[str]
     average_rating: float

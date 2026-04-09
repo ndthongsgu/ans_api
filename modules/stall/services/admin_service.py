@@ -22,7 +22,7 @@ class StallService:
             
         if filters.get('owner_id'):
             q = q.filter(Stall.owner_id == filters['owner_id'])
-            
+
         if filters.get('is_deleted') is not None:
             q = q.filter(Stall.is_deleted == filters['is_deleted'])
             
@@ -61,10 +61,10 @@ class StallService:
             radius=int(data.get('radius', 50)),
             cover_image=data.get('cover_image'),
             is_deleted=False,
-            status=True,
             category=data.get('category'),
             price_range=data.get('price_range'),
             opening_hours=data.get('opening_hours'),
+            close_hours=data.get('close_hours'),
             contact_phone=data.get('contact_phone'),
             website=data.get('website'),
             created_at=int(time.time())
@@ -155,12 +155,12 @@ class StallService:
             stall.price_range = data['price_range']
         if data.get('opening_hours') is not None:
             stall.opening_hours = data['opening_hours']
+        if data.get('close_hours') is not None:
+            stall.close_hours = data['close_hours']
         if data.get('contact_phone') is not None:
             stall.contact_phone = data['contact_phone']
         if data.get('website') is not None:
             stall.website = data['website']
-        if data.get('status') is not None:
-            stall.status = data['status']
 
         stall.updated_at = int(time.time())
         
@@ -279,6 +279,9 @@ class StallService:
 
     def upload_stall_image(self, stall_id: str, image_url: str):
         """Update stall with new cover image URL"""
+        stall = self.get_stall(stall_id)
+        if not stall:
+            return None
         
         # Delete old image if it exists
         if stall.cover_image:
