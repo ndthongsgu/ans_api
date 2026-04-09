@@ -24,7 +24,6 @@ class Stall(BaseModel):
     website = Column(String(255))
     average_rating = Column(Numeric(3, 2), default=0.00)
     total_reviews = Column(Integer, default=0)
-    status = Column(Boolean, default=True)
 
     created_at = Column(Integer, nullable=False)
     updated_at = Column(Integer, nullable=True)
