@@ -25,9 +25,6 @@ def owner_dashboard(
 ):
 	locale = accept_language
 
-	if not any(r.code == "OWNER" for r in current_user.roles):
-		raise HTTPException(status_code=403, detail=t("forbidden", locale))
-
 	service = OwnerDashboardService(db)
 	try:
 		data = service.get_dashboard(

@@ -16,11 +16,6 @@ from utils.i18n import t
 router = APIRouter(prefix="/stalls")
 
 
-def _ensure_owner_role(current_user: User, locale: str | None):
-	if not any(role.code == "OWNER" for role in current_user.roles):
-		raise HTTPException(status_code=403, detail=t("forbidden", locale))
-
-
 @router.get("")
 def list_my_stalls(
 	current_user: User = Depends(get_current_user),
@@ -28,7 +23,6 @@ def list_my_stalls(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
-	_ensure_owner_role(current_user, locale)
 	service = OwnerStallService(db)
 	data = service.list_stalls(current_user.id)
 	return success_response(message="Lấy dữ liệu thành công", data=data)
@@ -41,7 +35,6 @@ def get_stall_limit(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
-	_ensure_owner_role(current_user, locale)
 	service = OwnerStallService(db)
 
 	try:
@@ -63,7 +56,6 @@ def create_stall(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
-	_ensure_owner_role(current_user, locale)
 	service = OwnerStallService(db)
 
 	try:
@@ -83,7 +75,6 @@ def get_stall_detail(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
-	_ensure_owner_role(current_user, locale)
 	service = OwnerStallService(db)
 
 	try:
@@ -104,7 +95,6 @@ def update_stall(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
-	_ensure_owner_role(current_user, locale)
 	service = OwnerStallService(db)
 
 	try:
@@ -124,7 +114,6 @@ def delete_stall(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
-	_ensure_owner_role(current_user, locale)
 	service = OwnerStallService(db)
 
 	try:

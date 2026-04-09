@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from models.owner import Owner
 from models.user import User
 from common.dto.response import success_response
 from modules.auth.controllers.mobile_controller import get_current_user
@@ -74,9 +75,6 @@ def me(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
-	if not any(r.code == "OWNER" for r in current_user.roles):
-		raise HTTPException(status_code=403, detail=t("forbidden", locale))
-
 	service = OwnerService(db)
 	owner = service.get_owner_profile(current_user.id)
 	if not owner:
@@ -110,9 +108,6 @@ def update_me(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
-	if not any(r.code == "OWNER" for r in current_user.roles):
-		raise HTTPException(status_code=403, detail=t("forbidden", locale))
-
 	service = OwnerService(db)
 	try:
 		user, owner = service.update_owner_profile(current_user.id, payload)
@@ -155,7 +150,8 @@ def refresh(
 			raise HTTPException(status_code=401, detail=t("invalid_token", locale))
 
 		user = db.query(User).filter(User.id == user_id).first()
-		if not user or not any(r.code == "OWNER" for r in user.roles):
+		owner = db.query(Owner).filter(Owner.user_id == user_id).first()
+		if not user or not owner:
 			raise HTTPException(status_code=401, detail=t("user_not_found", locale))
 
 		access = create_access_token(user_id)
