@@ -1,15 +1,11 @@
 import base64
 import binascii
-import hashlib
 import json
 import time
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm import Session
 
-from core import config
 from models.listeningHistory import ListeningHistory
 from models.owner import Owner
 from models.stall import Stall
@@ -20,6 +16,7 @@ from modules.stall.dto.owner_dto import (
 	StallResponse,
 	UpdateStallRequest,
 )
+from utils.file_helper import save_stall_image
 
 
 class ServiceError(Exception):
@@ -31,49 +28,6 @@ class OwnerStallService:
 	def __init__(self, db: Session):
 		self.db = db
 
-	def _upload_cover_image_to_cloudinary(self, data_uri: str) -> str:
-		cloud_name = config.CLOUDINARY_CLOUD_NAME.strip()
-		if not cloud_name:
-			raise ServiceError("invalid_cover_image")
-
-		upload_url = f"https://api.cloudinary.com/v1_1/{cloud_name}/image/upload"
-		timestamp = int(time.time())
-		params = {
-			"file": data_uri,
-			"folder": config.CLOUDINARY_FOLDER,
-		}
-
-		upload_preset = config.CLOUDINARY_UPLOAD_PRESET.strip()
-		api_key = config.CLOUDINARY_API_KEY.strip()
-		api_secret = config.CLOUDINARY_API_SECRET.strip()
-
-		if upload_preset:
-			params["upload_preset"] = upload_preset
-		elif api_key and api_secret:
-			sign_parts = [f"folder={config.CLOUDINARY_FOLDER}", f"timestamp={timestamp}"]
-			signature_payload = "&".join(sign_parts) + api_secret
-			signature = hashlib.sha1(signature_payload.encode("utf-8")).hexdigest()
-			params["api_key"] = api_key
-			params["timestamp"] = timestamp
-			params["signature"] = signature
-		else:
-			raise ServiceError("invalid_cover_image")
-
-		encoded = urlencode(params).encode("utf-8")
-		request = Request(upload_url, data=encoded, method="POST")
-		request.add_header("Content-Type", "application/x-www-form-urlencoded")
-
-		try:
-			with urlopen(request, timeout=20) as response:
-				payload = json.loads(response.read().decode("utf-8"))
-		except Exception:
-			raise ServiceError("invalid_cover_image")
-
-		secure_url = payload.get("secure_url")
-		if not isinstance(secure_url, str) or not secure_url.strip():
-			raise ServiceError("invalid_cover_image")
-		return secure_url
-
 	def _normalize_cover_image(self, cover_image: str | None) -> str | None:
 		if cover_image is None:
 			return None
@@ -82,12 +36,13 @@ class OwnerStallService:
 		if not value:
 			return None
 
-		# Accept data URI images and upload to Cloudinary.
+		# Accept data URI images and store them in local static folder.
 		if value.startswith("data:image/") and ";base64," in value:
 			header, encoded = value.split(",", 1)
 			ext = header[len("data:image/"):].split(";")[0].lower()
 			ext = "jpg" if ext == "jpeg" else ext
-			if ext not in {"png", "jpg", "gif", "webp", "svg+xml"}:
+			ext = "svg" if ext == "svg+xml" else ext
+			if ext not in {"png", "jpg", "gif", "webp", "svg"}:
 				raise ServiceError("invalid_cover_image")
 
 			try:
@@ -99,8 +54,10 @@ class OwnerStallService:
 			if len(binary) > 10 * 1024 * 1024:
 				raise ServiceError("invalid_cover_image")
 
-			# Upload to Cloudinary and keep the secure URL in database.
-			return self._upload_cover_image_to_cloudinary(value)
+			try:
+				return save_stall_image(binary, f"cover.{ext}")
+			except Exception:
+				raise ServiceError("invalid_cover_image")
 
 		return value
 

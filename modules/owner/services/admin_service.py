@@ -1,8 +1,6 @@
 from sqlalchemy.orm import Session
 from models.owner import Owner
 from models.user import User
-from models.role import Role
-from models.userRole import UserRole
 from models.subscription_package import SubscriptionPackage
 from utils.security import hash_password
 import time
@@ -58,12 +56,6 @@ class OwnerService:
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)
-        
-        # Assign OWNER role
-        owner_role = self.db.query(Role).filter(Role.code == "OWNER").first()
-        if owner_role:
-            ur = UserRole(user_id=user.id, role_id=owner_role.id, code=owner_role.code)
-            self.db.add(ur)
         
         # resolve subscription package
         subscription_package = None

@@ -2,9 +2,7 @@ import time
 from sqlalchemy.orm import Session
 
 from models.owner import Owner
-from models.role import Role
 from models.user import User
-from models.userRole import UserRole
 from modules.auth.dto.owner_dto import RegisterRequest, UpdateProfileRequest
 from utils.security import hash_password, verify_password
 
@@ -34,17 +32,6 @@ class OwnerService:
 	def find_by_phone_excluding_owner(self, phone: str, owner_id: str):
 		return self.db.query(Owner).filter(Owner.phone == phone, Owner.id != owner_id).first()
 
-	def _get_or_create_owner_role(self) -> Role:
-		role = self.db.query(Role).filter(Role.code == "OWNER").first()
-		if role:
-			return role
-
-		role = Role(code="OWNER", name="Owner")
-		self.db.add(role)
-		self.db.commit()
-		self.db.refresh(role)
-		return role
-
 	def authenticate_owner(self, username: str, password: str):
 		# username can be email or phone
 		user = self.db.query(User).filter((User.email == username)).first()
@@ -58,7 +45,8 @@ class OwnerService:
 			return None
 		if not verify_password(password, user.password_hash):
 			return None
-		if not any(r.code == "OWNER" for r in user.roles):
+		owner = self.db.query(Owner).filter(Owner.user_id == user.id).first()
+		if not owner:
 			return None
 		return user
 
@@ -83,11 +71,6 @@ class OwnerService:
 		self.db.add(user)
 		self.db.commit()
 		self.db.refresh(user)
-
-		role = self._get_or_create_owner_role()
-		user_role = UserRole(user_id=user.id, role_id=role.id, code=role.code)
-		self.db.add(user_role)
-		self.db.commit()
 
 		owner = Owner(
 			user_id=user.id,

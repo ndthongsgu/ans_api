@@ -13,11 +13,6 @@ from utils.i18n import t
 router = APIRouter(prefix="/subscription-packages")
 
 
-def _ensure_owner_role(current_user: User, locale: str | None):
-    if not any(role.code == "OWNER" for role in current_user.roles):
-        raise HTTPException(status_code=403, detail=t("forbidden", locale))
-
-
 @router.get("")
 def list_packages(
     current_user: User = Depends(get_current_user),
@@ -25,7 +20,6 @@ def list_packages(
     accept_language: str | None = Header(None),
 ):
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerSubscriptionPackageService(db)
     data = service.list_packages()
     return success_response(message="Lấy danh sách gói thành công", data=data)
@@ -38,7 +32,6 @@ def my_subscription(
     accept_language: str | None = Header(None),
 ):
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerSubscriptionPackageService(db)
 
     try:
@@ -58,7 +51,6 @@ def register_package(
     accept_language: str | None = Header(None),
 ):
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerSubscriptionPackageService(db)
 
     try:
@@ -78,7 +70,6 @@ def register_package_redirect(
     accept_language: str | None = Header(None),
 ):
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerSubscriptionPackageService(db)
 
     try:
@@ -102,7 +93,6 @@ def list_transactions(
     limit: int = Query(100, ge=1, le=1000),
 ):
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerSubscriptionPackageService(db)
     data, total = service.list_transactions(current_user.id, skip, limit)
     return success_response(message="Lấy lịch sử thanh toán thành công", data={"items": data, "total": total})

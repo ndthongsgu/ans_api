@@ -15,11 +15,6 @@ from utils.i18n import t
 router = APIRouter(prefix="/stall-contents")
 
 
-def _ensure_owner_role(current_user: User, locale: str | None):
-    if not any(role.code == "OWNER" for role in current_user.roles):
-        raise HTTPException(status_code=403, detail=t("forbidden", locale))
-
-
 def _content_to_dict(content):
     return {
         "id": content.id,
@@ -41,7 +36,6 @@ def create_stall_content(
 ):
     
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -66,7 +60,6 @@ def list_available_stalls_for_content(
     limit: int = Query(100, ge=1, le=1000),
 ):
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -92,7 +85,6 @@ def list_owner_contents(
 ):
     """List all contents across all stalls owned by current user"""
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -118,7 +110,6 @@ def get_available_languages(
 ):
     """Get available languages for a stall's content"""
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -143,7 +134,6 @@ def list_stall_contents_by_language(
 ):
     """List stall contents in a specific language for current owner"""
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -173,7 +163,6 @@ def get_stall_content(
 ):
     """Get a specific content"""
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -199,7 +188,6 @@ def update_stall_content(
 ):
     """Update stall content"""
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -224,7 +212,6 @@ def delete_stall_content(
 ):
     """Delete stall content permanently"""
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -250,7 +237,6 @@ def toggle_stall_content_status(
 ):
     """Toggle stall content active status via is_deleted (0/1)"""
     locale = accept_language
-    _ensure_owner_role(current_user, locale)
     service = OwnerStallContentService(db)
 
     try:
