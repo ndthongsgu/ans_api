@@ -15,7 +15,7 @@ class OpeningHourItem(BaseModel):
 
 
 class CreateStallRequest(BaseModel):
-	name: str = Field(min_length=1, max_length=255)
+	stall_name: str = Field(min_length=1, max_length=255)
 	latitude: float = Field(ge=-90, le=90)
 	longitude: float = Field(ge=-180, le=180)
 	radius: int = Field(default=50, ge=1)
@@ -52,7 +52,7 @@ class CreateStallRequest(BaseModel):
 
 
 class UpdateStallRequest(BaseModel):
-	name: str | None = Field(default=None, min_length=1, max_length=255)
+	stall_name: str | None = Field(default=None, min_length=1, max_length=255)
 	latitude: float | None = Field(default=None, ge=-90, le=90)
 	longitude: float | None = Field(default=None, ge=-180, le=180)
 	radius: int | None = Field(default=None, ge=1)
@@ -91,7 +91,7 @@ class UpdateStallRequest(BaseModel):
 class StallResponse(BaseModel):
 	id: str
 	owner_id: str
-	name: str
+	stall_name: str
 	latitude: float
 	longitude: float
 	radius: int

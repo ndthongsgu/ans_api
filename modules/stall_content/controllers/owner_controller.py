@@ -25,14 +25,10 @@ def _content_to_dict(content):
         "id": content.id,
         "stall_id": content.stall_id,
         "stall_name": content.stall_name,
-        "language_code": content.language_code,
-        "audio_url": content.audio_url,
-        "audio_duration": content.audio_duration,
-        "audio_file_size": content.audio_file_size,
         "tts_script": content.tts_script,
-        "is_deleted": content.is_deleted,
         "created_at": content.created_at,
         "updated_at": content.updated_at,
+        "is_deleted": content.is_deleted,
     }
 
 
@@ -51,7 +47,7 @@ def create_stall_content(
     try:
         content = service.create_content(current_user.id, payload)
         return success_response(
-            message="Created successfully",
+            message="Tạo nội dung thành công",
             data=[_content_to_dict(content)],
             status_code=201,
         )
@@ -74,9 +70,9 @@ def list_available_stalls_for_content(
     service = OwnerStallContentService(db)
 
     try:
-        data, total = service.list_stalls_without_content(current_user.id, skip, limit)
+        data = service.list_stalls_without_content(current_user.id, skip, limit)
         return success_response(
-            message="Retrieved successfully",
+            message="Danh sách quán chưa có nội dung",
             data=data,
         )
     except ServiceError as exc:
@@ -104,7 +100,7 @@ def list_owner_contents(
             current_user.id, language_code, skip, limit
         )
         return success_response(
-            message="Retrieved successfully",
+            message="Lấy dữ liệu thành công",
             data=data,
         )
     except ServiceError as exc:
@@ -128,7 +124,7 @@ def get_available_languages(
     try:
         languages = service.get_available_languages(current_user.id, stall_id)
         return success_response(
-            message="Retrieved successfully",
+            message="Lấy dữ liệu thành công",
             data=languages,
         )
     except ServiceError as exc:
@@ -157,7 +153,7 @@ def list_stall_contents_by_language(
             language_code,
         )
         return success_response(
-            message="Retrieved successfully",
+            message="Lấy dữ liệu thành công",
             data=data,
         )
     except ServiceError as exc:
@@ -183,7 +179,7 @@ def get_stall_content(
     try:
         content = service.get_content(current_user.id, stall_id, content_id, language_code)
         return success_response(
-            message="Retrieved successfully",
+            message="Lấy dữ liệu thành công",
             data=[_content_to_dict(content)],
         )
     except ServiceError as exc:
@@ -209,7 +205,7 @@ def update_stall_content(
     try:
         content = service.update_content(current_user.id, stall_id, content_id, payload)
         return success_response(
-            message="Updated successfully",
+            message="Cập nhật nội dung thành công",
             data=[_content_to_dict(content)],
         )
     except ServiceError as exc:
@@ -234,7 +230,7 @@ def delete_stall_content(
     try:
         service.delete_content(current_user.id, stall_id, content_id)
         return success_response(
-            message="Deleted successfully",
+            message="Xóa nội dung thành công",
             data=[],
         )
     except ServiceError as exc:
@@ -265,7 +261,7 @@ def toggle_stall_content_status(
             bool(is_deleted),
         )
         return success_response(
-            message="Updated successfully",
+            message="Cập nhật trạng thái nội dung thành công",
             data=[_content_to_dict(content)],
         )
     except ServiceError as exc:

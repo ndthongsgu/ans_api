@@ -1,5 +1,7 @@
 import time
+import uuid
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from common.enums.language import LanguageCode
@@ -187,10 +189,9 @@ class OwnerStallContentService:
         owner = self._ensure_owner(user_id)
         self._ensure_owner_stall(owner.id, payload.stall_id)
 
-        source_language = self._ensure_supported_language(payload.language_code)
+        source_language = LanguageCode.DEFAULT
         now = int(time.time())
         source_audio = self._generate_audio_from_tts(source_language, payload.tts_script)
-        audio_url = source_audio["audio_url"]
 
         # One stall must have only one narration content record.
         source_content = (
@@ -215,7 +216,7 @@ class OwnerStallContentService:
         self._upsert_translation(
             content_id=source_content.id,
             language_code=source_language,
-            audio_url=audio_url,
+            audio_url=source_audio["audio_url"],
             audio_duration=source_audio.get("audio_duration"),
             audio_file_size=source_audio.get("audio_file_size"),
             tts_script=payload.tts_script,
@@ -238,8 +239,8 @@ class OwnerStallContentService:
                     content_id=source_content.id,
                     language_code=language,
                     audio_url=translated_audio["audio_url"],
-                        audio_duration=translated_audio.get("audio_duration"),
-                        audio_file_size=translated_audio.get("audio_file_size"),
+                    audio_duration=translated_audio.get("audio_duration"),
+                    audio_file_size=translated_audio.get("audio_file_size"),
                     tts_script=translated_script,
                     now=now,
                 )
@@ -258,23 +259,24 @@ class OwnerStallContentService:
     ) -> tuple[list[dict], int]:
         owner = self._ensure_owner(user_id)
 
+        has_any_content = (
+            self.db.query(StallContent.id)
+            .filter(StallContent.stall_id == Stall.id)
+            .exists()
+        )
+
         query = (
             self.db.query(Stall)
-            .outerjoin(
-                StallContent,
-                (StallContent.stall_id == Stall.id) & (StallContent.is_deleted == False),
-            )
             .filter(
                 Stall.owner_id == owner.id,
                 Stall.is_deleted == False,
-                StallContent.id.is_(None),
+                ~has_any_content,
             )
         )
 
-        total = query.count()
         stalls = query.order_by(Stall.created_at.desc()).offset(skip).limit(limit).all()
-        data = [{"id": stall.id, "name": stall.name} for stall in stalls]
-        return data, total
+        data = [{"id": stall.id, "stall_name": stall.name} for stall in stalls]
+        return data
 
     def list_stall_contents(
         self,

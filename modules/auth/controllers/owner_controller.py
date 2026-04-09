@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from models.user import User
+from common.dto.response import success_response
 from modules.auth.controllers.mobile_controller import get_current_user
 from modules.auth.dto.owner_dto import (
 	LoginRequest,
@@ -24,7 +25,7 @@ from utils.security import (
 router = APIRouter(prefix="/auth")
 
 
-@router.post("/register", response_model=TokenResponse)
+@router.post("/register")
 def register(
 	payload: RegisterRequest,
 	db: Session = Depends(get_db),
@@ -39,10 +40,14 @@ def register(
 
 	access = create_access_token(user.id)
 	refresh = create_refresh_token(user.id)
-	return {"accessToken": access, "refreshToken": refresh}
+	return success_response(
+		message="Đăng ký thành công",
+		data={"accessToken": access, "refreshToken": refresh},
+		status_code=201,
+	)
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 def login(
 	payload: LoginRequest,
 	db: Session = Depends(get_db),
@@ -56,7 +61,10 @@ def login(
 
 	access = create_access_token(user.id)
 	refresh = create_refresh_token(user.id)
-	return {"accessToken": access, "refreshToken": refresh}
+	return success_response(
+		message="Đăng nhập thành công",
+		data={"accessToken": access, "refreshToken": refresh},
+	)
 
 
 @router.get("/me")
@@ -74,7 +82,9 @@ def me(
 	if not owner:
 		raise HTTPException(status_code=404, detail=t("profile_not_found", locale))
 
-	return {
+	return success_response(
+		message="Lấy dữ liệu thành công",
+		data={
 		"id": current_user.id,
 		"username": current_user.username,
 		"email": current_user.email,
@@ -85,9 +95,11 @@ def me(
 			"phone": owner.phone,
 			"business_name": owner.business_name,
 			"business_address": owner.business_address,
+   			"subscription_package_id" : owner.subscription_package_id,
 			"subscription_expires_at": owner.subscription_expires_at,
 		},
-	}
+		},
+	)
 
 
 @router.put("/me")
@@ -107,7 +119,9 @@ def update_me(
 	except ServiceError as e:
 		raise HTTPException(status_code=400, detail=t(e.code, locale))
 
-	return {
+	return success_response(
+		message="Cập nhật thông tin thành công",
+		data={
 		"id": user.id,
 		"username": user.username,
 		"email": user.email,
@@ -120,10 +134,11 @@ def update_me(
 			"business_address": owner.business_address,
 			"subscription_expires_at": owner.subscription_expires_at,
 		},
-	}
+		},
+	)
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh")
 def refresh(
 	payload: RefreshRequest,
 	db: Session = Depends(get_db),
@@ -145,7 +160,10 @@ def refresh(
 
 		access = create_access_token(user_id)
 		refresh_token = create_refresh_token(user_id)
-		return {"accessToken": access, "refreshToken": refresh_token}
+		return success_response(
+			message="Làm mới token thành công",
+			data={"accessToken": access, "refreshToken": refresh_token},
+		)
 	except jwt.ExpiredSignatureError:
 		raise HTTPException(status_code=401, detail=t("token_expired", locale))
 	except jwt.InvalidTokenError:

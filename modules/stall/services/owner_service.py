@@ -10,8 +10,10 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm import Session
 
 from core import config
+from models.listeningHistory import ListeningHistory
 from models.owner import Owner
 from models.stall import Stall
+from models.stallContent import StallContent
 from models.subscription_package import SubscriptionPackage
 from modules.stall.dto.owner_dto import (
 	CreateStallRequest,
@@ -111,7 +113,11 @@ class OwnerStallService:
 	def _get_owned_stall(self, owner_id: str, stall_id: str) -> Stall:
 		stall = (
 			self.db.query(Stall)
-			.filter(Stall.id == stall_id, Stall.owner_id == owner_id)
+			.filter(
+				Stall.id == stall_id,
+				Stall.owner_id == owner_id,
+				Stall.is_deleted == False,
+			)
 			.first()
 		)
 		if not stall:
@@ -139,7 +145,21 @@ class OwnerStallService:
 			max_stalls = int(package.max_stalls or 0)
 		except (TypeError, ValueError):
 			max_stalls = 0
-		return max(max_stalls, default_limit)
+		return max_stalls if max_stalls > 0 else default_limit
+
+	def get_stall_limit_info(self, user_id: str) -> dict:
+		owner = self._ensure_owner(user_id)
+		current_stalls = (
+			self.db.query(Stall)
+			.filter(Stall.owner_id == owner.id, Stall.is_deleted == False)
+			.count()
+		)
+		limit = self._get_stall_limit(owner)
+		return {
+			"current_stalls": current_stalls,
+			"max_stalls": limit,
+			"remaining_stalls": max(limit - current_stalls, 0),
+		}
 
 	def _serialize_opening_hours(self, opening_hours) -> str | None:
 		if opening_hours is None:
@@ -170,7 +190,7 @@ class OwnerStallService:
 		return StallResponse(
 			id=stall.id,
 			owner_id=stall.owner_id,
-			name=stall.name,
+			stall_name=stall.name,
 			latitude=stall.latitude,
 			longitude=stall.longitude,
 			radius=stall.radius,
@@ -191,7 +211,7 @@ class OwnerStallService:
 		owner = self._ensure_owner(user_id)
 		stalls = (
 			self.db.query(Stall)
-			.filter(Stall.owner_id == owner.id)
+			.filter(Stall.owner_id == owner.id, Stall.is_deleted == False)
 			.order_by(Stall.created_at.desc())
 			.all()
 		)
@@ -213,8 +233,8 @@ class OwnerStallService:
 		if current_stalls >= limit:
 			raise ServiceError("stall_limit_exceeded")
 
-		name = payload.name.strip()
-		if not name:
+		stall_name = payload.stall_name.strip()
+		if not stall_name:
 			raise ServiceError("invalid_stall_name")
 
 		now = int(time.time())
@@ -222,7 +242,7 @@ class OwnerStallService:
 
 		stall = Stall(
 			owner_id=owner.id,
-			name=name,
+			name=stall_name,
 			latitude=payload.latitude,
 			longitude=payload.longitude,
 			radius=payload.radius,
@@ -253,11 +273,11 @@ class OwnerStallService:
 		stall = self._get_owned_stall(owner.id, stall_id)
 
 		changes = payload.model_dump(exclude_unset=True)
-		if "name" in changes and changes["name"] is not None:
-			name = changes["name"].strip()
-			if not name:
+		if "stall_name" in changes and changes["stall_name"] is not None:
+			stall_name = changes["stall_name"].strip()
+			if not stall_name:
 				raise ServiceError("invalid_stall_name")
-			stall.name = name
+			stall.name = stall_name
 
 		if "latitude" in changes:
 			stall.latitude = changes["latitude"]
@@ -290,3 +310,25 @@ class OwnerStallService:
 			raise ServiceError("invalid_stall_payload")
 		self.db.refresh(stall)
 		return self._to_response(stall)
+
+	def delete_stall(self, user_id: str, stall_id: str) -> None:
+		owner = self._ensure_owner(user_id)
+		stall = self._get_owned_stall(owner.id, stall_id)
+
+		contents = (
+			self.db.query(StallContent)
+			.filter(StallContent.stall_id == stall.id)
+			.all()
+		)
+
+		if contents:
+			content_ids = [content.id for content in contents]
+			self.db.query(ListeningHistory).filter(
+				ListeningHistory.stall_content_id.in_(content_ids)
+			).delete(synchronize_session=False)
+			for content in contents:
+				self.db.delete(content)
+
+		stall.is_deleted = True
+		stall.updated_at = int(time.time())
+		self.db.commit()

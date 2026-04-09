@@ -118,3 +118,22 @@ async def vnpay_ipn(request: Request, payload: dict | None = Body(default=None),
         return result
     except ServiceError as exc:
         return {"RspCode": "99", "Message": getattr(exc, "detail", None) or exc.code}
+
+
+@router.api_route("/vnpay/return", methods=["GET", "POST"])
+async def vnpay_return(request: Request, payload: dict | None = Body(default=None), db: Session = Depends(get_db)):
+    service = OwnerSubscriptionPackageService(db)
+    params = dict(request.query_params) if request.query_params else dict(payload or {})
+
+    try:
+        service.handle_vnpay_ipn(params)
+        return success_response(
+            message="Xác nhận thanh toán thành công",
+            data={
+                "order_id": params.get("vnp_TxnRef"),
+                "response_code": params.get("vnp_ResponseCode"),
+                "transaction_status": params.get("vnp_TransactionStatus"),
+            },
+        )
+    except ServiceError as exc:
+        raise HTTPException(status_code=400, detail=getattr(exc, "detail", None) or exc.code)

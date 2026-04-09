@@ -65,8 +65,39 @@ class OwnerSubscriptionPackageService:
 
     def get_my_subscription(self, user_id: str) -> dict:
         owner = self._ensure_owner(user_id)
+
+        latest_completed_transaction = (
+            self.db.query(SubscriptionTransaction)
+            .filter(
+                SubscriptionTransaction.owner_id == owner.id,
+                SubscriptionTransaction.payment_status == "success",
+            )
+            .order_by(SubscriptionTransaction.created_at.desc())
+            .first()
+        )
+
+        if latest_completed_transaction and (
+            owner.subscription_package_id != latest_completed_transaction.subscription_package_id
+            or owner.subscription_expires_at != latest_completed_transaction.subscription_end_at
+        ):
+            owner.subscription_package_id = latest_completed_transaction.subscription_package_id
+            owner.subscription_expires_at = latest_completed_transaction.subscription_end_at
+            owner.updated_at = int(time.time())
+            self.db.commit()
+            self.db.refresh(owner)
+
         package = None
-        if owner.subscription_package_id:
+        if latest_completed_transaction:
+            package = (
+                self.db.query(SubscriptionPackage)
+                .filter(
+                    SubscriptionPackage.id == latest_completed_transaction.subscription_package_id,
+                    SubscriptionPackage.is_deleted == False,
+                )
+                .first()
+            )
+
+        if not package and owner.subscription_package_id:
             package = (
                 self.db.query(SubscriptionPackage)
                 .filter(
@@ -77,22 +108,14 @@ class OwnerSubscriptionPackageService:
             )
 
         now = int(time.time())
-        expires_at = owner.subscription_expires_at
-        is_active = bool(expires_at and expires_at > now)
-
-        latest_completed_transaction = (
-            self.db.query(SubscriptionTransaction)
-            .filter(
-                SubscriptionTransaction.owner_id == owner.id,
-                SubscriptionTransaction.payment_status == "completed",
-            )
-            .order_by(SubscriptionTransaction.created_at.desc())
-            .first()
+        expires_at = owner.subscription_expires_at or (
+            latest_completed_transaction.subscription_end_at if latest_completed_transaction else None
         )
+        is_active = bool(expires_at and expires_at > now)
 
         return {
             "owner_id": owner.id,
-            "subscription_package_id": owner.subscription_package_id,
+            "subscription_package_id": latest_completed_transaction.subscription_package_id if latest_completed_transaction else owner.subscription_package_id,
             "is_active": is_active,
             "subscription_start_at": latest_completed_transaction.subscription_start_at if latest_completed_transaction else None,
             "subscription_expires_at": expires_at,
@@ -222,7 +245,7 @@ class OwnerSubscriptionPackageService:
             currency="VND",
             payment_method="vnpay",
             payment_provider="vnpay",
-            payment_status="pending",
+            payment_status="success",
             subscription_start_at=subscription_start_at,
             subscription_end_at=subscription_end_at,
             raw_payload=json.dumps(payload.model_dump(), ensure_ascii=False),
@@ -289,7 +312,7 @@ class OwnerSubscriptionPackageService:
         if not transaction:
             raise ServiceError("subscription_failed", "Transaction not found")
 
-        if transaction.payment_status == "completed":
+        if transaction.payment_status == "success":
             return {"RspCode": "00", "Message": "Confirm Success"}
 
         response_code = str(payload.get("vnp_ResponseCode") or "")
@@ -317,7 +340,7 @@ class OwnerSubscriptionPackageService:
             owner.subscription_package_id = package.id
             owner.subscription_expires_at = transaction.subscription_end_at
             owner.updated_at = now
-            transaction.payment_status = "completed"
+            transaction.payment_status = "success"
             transaction.paid_at = now
         else:
             transaction.payment_status = "failed"

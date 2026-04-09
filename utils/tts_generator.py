@@ -41,15 +41,13 @@ def generate_audio_from_text(text: str, language_code: str = "vi", return_bytes:
         # Get file size
         file_size = audio_path.stat().st_size
         
-        # pydub depends on audioop/pyaudioop; on Python 3.13 it may be unavailable.
-        # Keep TTS generation working and return None duration when metadata parsing is unavailable.
+        # Get duration using pydub (optional, may fail if FFmpeg not installed)
         duration_seconds = None
         try:
-            AudioSegment = importlib.import_module("pydub").AudioSegment
             audio = AudioSegment.from_mp3(str(audio_path))
             duration_seconds = len(audio) // 1000  # Convert milliseconds to seconds
-        except Exception:
-            duration_seconds = None
+        except Exception as e:
+            print(f"Warning: Could not get audio duration: {str(e)}. Duration will be set to None.")
         
         if return_bytes:
             with open(audio_path, "rb") as f:

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from common.dto.response import success_response
 from models.user import User
 from modules.auth.controllers.mobile_controller import get_current_user
 from modules.customer.dto.owner_dto import OwnerDashboardResponse
@@ -13,7 +14,7 @@ from utils.i18n import t
 router = APIRouter(prefix="/dashboard")
 
 
-@router.get("", response_model=OwnerDashboardResponse)
+@router.get("")
 def owner_dashboard(
 	group_by: Literal["day", "week", "month"] = Query("day", alias="groupBy"),
 	from_timestamp: int | None = Query(None, alias="fromTimestamp"),
@@ -29,12 +30,13 @@ def owner_dashboard(
 
 	service = OwnerDashboardService(db)
 	try:
-		return service.get_dashboard(
+		data = service.get_dashboard(
 			user_id=current_user.id,
 			group_by=group_by,
 			from_timestamp=from_timestamp,
 			to_timestamp=to_timestamp,
 		)
+		return success_response(message="Lấy dữ liệu thành công", data=data)
 	except ServiceError as e:
 		if e.code == "profile_not_found":
 			raise HTTPException(status_code=404, detail=t(e.code, locale))
