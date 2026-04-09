@@ -407,7 +407,7 @@ class OwnerStallContentService:
 
         now = int(time.time())
 
-        update_lang = self._ensure_supported_language(payload.language_code) if payload.language_code else LanguageCode.DEFAULT
+        update_lang = LanguageCode.DEFAULT
 
         if payload.tts_script is not None:
             translated_scripts = translate_to_multiple_languages(

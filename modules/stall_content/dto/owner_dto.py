@@ -7,7 +7,7 @@ class StallContentCreateRequest(BaseModel):
 
 
 class StallContentUpdateRequest(BaseModel):
-    stall_id: str = Field(min_length=1)
+    stall_id: str | None = Field(default=None, min_length=1)
     tts_script: str | None = Field(default=None, max_length=5000)
 
 
