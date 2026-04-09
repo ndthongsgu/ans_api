@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from core.database import get_db
-from modules.subscriptionPackage.services.admin_service import SubscriptionPackageService
-from modules.subscriptionPackage.dto.admin_dto import (
+from modules.subscription_package.services.admin_service import SubscriptionPackageService
+from modules.subscription_package.dto.admin_dto import (
     SubscriptionPackagePageRequest,
     SubscriptionPackageCreate,
     SubscriptionPackageUpdate,
@@ -146,4 +146,3 @@ def select_package(current_user: User = Depends(get_current_user), db: Session =
     packages = service.list_for_select()
     data = [{"id": p.id, "name": p.name} for p in packages]
     return success_response(message="Lấy dữ liệu thành công", data=data)
-

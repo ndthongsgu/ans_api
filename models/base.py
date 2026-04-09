@@ -1,5 +1,3 @@
-
-
 from time import time
 import uuid
 from sqlalchemy import Boolean, Column, Integer, String

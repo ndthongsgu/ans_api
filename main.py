@@ -37,7 +37,7 @@ class UTF8JSONResponse(JSONResponse):
         ).encode('utf-8')
 
 # Create tables
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine) 
 
 app = FastAPI(
     title="ANS API",

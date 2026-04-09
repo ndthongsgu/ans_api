@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, Text, Double,
+    Column, String, Integer, Float, Boolean, Text,
     ForeignKey, Numeric, Index
 )
 from sqlalchemy.orm import relationship
@@ -12,14 +12,14 @@ class Stall(BaseModel):
     owner_id = Column(String(36), ForeignKey("owners.id"), nullable=False)
 
     name = Column(String(255), nullable=False)
-    latitude = Column(Double, nullable=False)
-    longitude = Column(Double, nullable=False)
-
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
     radius = Column(Integer, default=50)
-    cover_image = Column(String(500))
+    cover_image = Column(Text)
     category = Column(String(100))
     price_range = Column(String(20))
     opening_hours = Column(Text)
+    close_hours = Column(Text)
     contact_phone = Column(String(20))
     website = Column(String(255))
     average_rating = Column(Numeric(3, 2), default=0.00)

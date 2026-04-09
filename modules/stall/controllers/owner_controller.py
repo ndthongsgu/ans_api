@@ -2,14 +2,12 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from common.dto.response import success_response
 from models.user import User
-from modules.auth.controllers.mobile_controller import get_current_user
+from modules.auth.controllers.owner_controller import get_current_user
 from modules.stall.dto.owner_dto import (
-	CreateStallContentRequest,
 	CreateStallRequest,
-	StallContentResponse,
 	StallResponse,
-	UpdateStallContentRequest,
 	UpdateStallRequest,
 )
 from modules.stall.services.owner_service import OwnerStallService, ServiceError
@@ -23,7 +21,7 @@ def _ensure_owner_role(current_user: User, locale: str | None):
 		raise HTTPException(status_code=403, detail=t("forbidden", locale))
 
 
-@router.get("", response_model=list[StallResponse])
+@router.get("")
 def list_my_stalls(
 	current_user: User = Depends(get_current_user),
 	db: Session = Depends(get_db),
@@ -32,10 +30,32 @@ def list_my_stalls(
 	locale = accept_language
 	_ensure_owner_role(current_user, locale)
 	service = OwnerStallService(db)
-	return service.list_stalls(current_user.id)
+	data = service.list_stalls(current_user.id)
+	return success_response(message="Lấy dữ liệu thành công", data=data)
 
 
-@router.post("", response_model=StallResponse)
+@router.get("/limit")
+def get_stall_limit(
+	current_user: User = Depends(get_current_user),
+	db: Session = Depends(get_db),
+	accept_language: str | None = Header(None),
+):
+	locale = accept_language
+	_ensure_owner_role(current_user, locale)
+	service = OwnerStallService(db)
+
+	try:
+		return success_response(
+			message="Lấy thông tin giới hạn số quán thành công",
+			data=service.get_stall_limit_info(current_user.id),
+		)
+	except ServiceError as exc:
+		if exc.code == "profile_not_found":
+			raise HTTPException(status_code=404, detail=t(exc.code, locale))
+		raise HTTPException(status_code=400, detail=t(exc.code, locale))
+
+
+@router.post("")
 def create_stall(
 	payload: CreateStallRequest,
 	current_user: User = Depends(get_current_user),
@@ -47,14 +67,15 @@ def create_stall(
 	service = OwnerStallService(db)
 
 	try:
-		return service.create_stall(current_user.id, payload)
+		data = service.create_stall(current_user.id, payload)
+		return success_response(message="Tạo quán thành công", data=data, status_code=201)
 	except ServiceError as exc:
 		if exc.code == "profile_not_found":
 			raise HTTPException(status_code=404, detail=t(exc.code, locale))
 		raise HTTPException(status_code=400, detail=t(exc.code, locale))
 
 
-@router.get("/{stall_id}", response_model=StallResponse)
+@router.get("/{stall_id}")
 def get_stall_detail(
 	stall_id: str,
 	current_user: User = Depends(get_current_user),
@@ -66,14 +87,15 @@ def get_stall_detail(
 	service = OwnerStallService(db)
 
 	try:
-		return service.get_stall_detail(current_user.id, stall_id)
+		data = service.get_stall_detail(current_user.id, stall_id)
+		return success_response(message="Lấy dữ liệu thành công", data=data)
 	except ServiceError as exc:
 		if exc.code in {"profile_not_found", "stall_not_found"}:
 			raise HTTPException(status_code=404, detail=t(exc.code, locale))
 		raise HTTPException(status_code=400, detail=t(exc.code, locale))
 
 
-@router.put("/{stall_id}", response_model=StallResponse)
+@router.put("/{stall_id}")
 def update_stall(
 	stall_id: str,
 	payload: UpdateStallRequest,
@@ -86,15 +108,16 @@ def update_stall(
 	service = OwnerStallService(db)
 
 	try:
-		return service.update_stall(current_user.id, stall_id, payload)
+		data = service.update_stall(current_user.id, stall_id, payload)
+		return success_response(message="Cập nhật quán thành công", data=data)
 	except ServiceError as exc:
 		if exc.code in {"profile_not_found", "stall_not_found"}:
 			raise HTTPException(status_code=404, detail=t(exc.code, locale))
 		raise HTTPException(status_code=400, detail=t(exc.code, locale))
 
 
-@router.get("/{stall_id}/contents", response_model=list[StallContentResponse])
-def list_stall_contents(
+@router.delete("/{stall_id}")
+def delete_stall(
 	stall_id: str,
 	current_user: User = Depends(get_current_user),
 	db: Session = Depends(get_db),
@@ -105,49 +128,9 @@ def list_stall_contents(
 	service = OwnerStallService(db)
 
 	try:
-		return service.list_stall_contents(current_user.id, stall_id)
+		service.delete_stall(current_user.id, stall_id)
+		return success_response(message=t("delete_success", locale))
 	except ServiceError as exc:
 		if exc.code in {"profile_not_found", "stall_not_found"}:
-			raise HTTPException(status_code=404, detail=t(exc.code, locale))
-		raise HTTPException(status_code=400, detail=t(exc.code, locale))
-
-
-@router.post("/{stall_id}/contents", response_model=StallContentResponse)
-def create_stall_content(
-	stall_id: str,
-	payload: CreateStallContentRequest,
-	current_user: User = Depends(get_current_user),
-	db: Session = Depends(get_db),
-	accept_language: str | None = Header(None),
-):
-	locale = accept_language
-	_ensure_owner_role(current_user, locale)
-	service = OwnerStallService(db)
-
-	try:
-		return service.create_stall_content(current_user.id, stall_id, payload)
-	except ServiceError as exc:
-		if exc.code in {"profile_not_found", "stall_not_found"}:
-			raise HTTPException(status_code=404, detail=t(exc.code, locale))
-		raise HTTPException(status_code=400, detail=t(exc.code, locale))
-
-
-@router.put("/{stall_id}/contents/{content_id}", response_model=StallContentResponse)
-def update_stall_content(
-	stall_id: str,
-	content_id: str,
-	payload: UpdateStallContentRequest,
-	current_user: User = Depends(get_current_user),
-	db: Session = Depends(get_db),
-	accept_language: str | None = Header(None),
-):
-	locale = accept_language
-	_ensure_owner_role(current_user, locale)
-	service = OwnerStallService(db)
-
-	try:
-		return service.update_stall_content(current_user.id, stall_id, content_id, payload)
-	except ServiceError as exc:
-		if exc.code in {"profile_not_found", "stall_not_found", "stall_content_not_found"}:
 			raise HTTPException(status_code=404, detail=t(exc.code, locale))
 		raise HTTPException(status_code=400, detail=t(exc.code, locale))

@@ -90,4 +90,3 @@ class SubscriptionPackageService:
 
     def list_for_select(self):
         return self.db.query(SubscriptionPackage).filter(SubscriptionPackage.is_deleted == False).all()
-

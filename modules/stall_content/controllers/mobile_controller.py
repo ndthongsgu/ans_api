@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from core.database import get_db
 from modules.auth.controllers.mobile_controller import get_current_user
-from modules.stallContent.services.mobile_service import StallContentMobileService
+from modules.stall_content.services.mobile_service import StallContentMobileService
 from models.user import User
 from common.dto.response import success_response
 

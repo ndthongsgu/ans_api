@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from models.stallContent import StallContent
 from models.stallContentTranslation import StallContentTranslation
-from modules.stallContent.services.admin_service import StallContentService
-from modules.stallContent.dto.admin_dto import (
+from modules.stall_content.services.admin_service import StallContentService
+from modules.stall_content.dto.admin_dto import (
     StallContentPageRequest,
     StallContentCreate,
     StallContentUpdate,
