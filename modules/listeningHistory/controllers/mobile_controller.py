@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from time import time
 from core.database import get_db
@@ -20,6 +20,7 @@ def list_listening_history(
     size: int = Query(20, ge=1, le=100),
     from_timestamp: int | None = Query(None),
     to_timestamp: int | None = Query(None),
+    accept_language: str | None = Header(None),
 ):
     """Get current user listening history with optional date filter and pagination"""
     service = ListeningHistoryMobileService(db)
@@ -29,6 +30,7 @@ def list_listening_history(
         size=size,
         from_timestamp=from_timestamp,
         to_timestamp=to_timestamp,
+        language_code=accept_language,
     )
 
     return success_response(
