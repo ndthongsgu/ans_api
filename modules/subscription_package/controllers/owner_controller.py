@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from common.dto.response import success_response
 from core.database import get_db
 from models.user import User
+from core.dependencies import ensure_owner
 from modules.auth.controllers.owner_controller import get_current_user
 from modules.subscription_package.dto.owner_dto import SubscriptionRegisterRequest
 from modules.subscription_package.services.owner_service import OwnerSubscriptionPackageService, ServiceError
@@ -17,9 +18,8 @@ router = APIRouter(prefix="/subscription-packages")
 def list_packages(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    accept_language: str | None = Header(None),
 ):
-    locale = accept_language
+    ensure_owner(current_user, db)
     service = OwnerSubscriptionPackageService(db)
     data = service.list_packages()
     return success_response(message="Lấy danh sách gói thành công", data=data)
@@ -32,11 +32,29 @@ def my_subscription(
     accept_language: str | None = Header(None),
 ):
     locale = accept_language
+    ensure_owner(current_user, db)
     service = OwnerSubscriptionPackageService(db)
-
     try:
         data = service.get_my_subscription(current_user.id)
         return success_response(message="Lấy gói đăng ký hiện tại thành công", data=data)
+    except ServiceError as exc:
+        if exc.code == "profile_not_found":
+            raise HTTPException(status_code=404, detail=t(exc.code, locale))
+        raise HTTPException(status_code=400, detail=getattr(exc, "detail", None) or t(exc.code, locale))
+
+
+@router.get("/my-purchases")
+def my_purchases(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    accept_language: str | None = Header(None),
+):
+    locale = accept_language
+    ensure_owner(current_user, db)
+    service = OwnerSubscriptionPackageService(db)
+    try:
+        data = service.get_my_purchases(current_user.id)
+        return success_response(message="Lấy danh sách gói đã mua thành công", data=data)
     except ServiceError as exc:
         if exc.code == "profile_not_found":
             raise HTTPException(status_code=404, detail=t(exc.code, locale))
@@ -51,14 +69,16 @@ def register_package(
     accept_language: str | None = Header(None),
 ):
     locale = accept_language
+    ensure_owner(current_user, db)
     service = OwnerSubscriptionPackageService(db)
-
     try:
         data = service.register_package(current_user.id, payload)
         return success_response(message="Tạo giao dịch thành công, vui lòng thanh toán", data=data, status_code=201)
     except ServiceError as exc:
         if exc.code in {"profile_not_found", "package_not_found"}:
             raise HTTPException(status_code=404, detail=t(exc.code, locale))
+        if exc.code == "stall_count_not_met":
+            raise HTTPException(status_code=422, detail=getattr(exc, "detail", None) or t(exc.code, locale))
         raise HTTPException(status_code=400, detail=getattr(exc, "detail", None) or t(exc.code, locale))
 
 
@@ -70,8 +90,8 @@ def register_package_redirect(
     accept_language: str | None = Header(None),
 ):
     locale = accept_language
+    ensure_owner(current_user, db)
     service = OwnerSubscriptionPackageService(db)
-
     try:
         data = service.register_package(current_user.id, payload)
         payment_url = data.get("payment_url")
@@ -81,21 +101,35 @@ def register_package_redirect(
     except ServiceError as exc:
         if exc.code in {"profile_not_found", "package_not_found"}:
             raise HTTPException(status_code=404, detail=t(exc.code, locale))
+        if exc.code == "stall_count_not_met":
+            raise HTTPException(status_code=422, detail=getattr(exc, "detail", None) or t(exc.code, locale))
         raise HTTPException(status_code=400, detail=getattr(exc, "detail", None) or t(exc.code, locale))
 
 
-@router.get("/transactions")
-def list_transactions(
+
+
+@router.post("/activate-purchase")
+def activate_purchase(
+    transaction_id: str = Body(..., embed=True),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     accept_language: str | None = Header(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
 ):
     locale = accept_language
+    ensure_owner(current_user, db)
     service = OwnerSubscriptionPackageService(db)
-    data, total = service.list_transactions(current_user.id, skip, limit)
-    return success_response(message="Lấy lịch sử thanh toán thành công", data={"items": data, "total": total})
+    try:
+        data = service.activate_purchase(current_user.id, transaction_id)
+        print(f"[DEBUG] activate_purchase transaction_id: {transaction_id}")
+        return success_response(message="Kích hoạt gói thành công", data=data)
+    except ServiceError as exc:
+        if exc.code == "profile_not_found":
+            raise HTTPException(status_code=404, detail=t(exc.code, locale))
+        if exc.code == "transaction_not_found":
+            raise HTTPException(status_code=404, detail="Không tìm thấy giao dịch")
+        if exc.code == "package_not_found":
+            raise HTTPException(status_code=404, detail="Không tìm thấy gói")
+        raise HTTPException(status_code=400, detail=getattr(exc, "detail", None) or t(exc.code, locale))
 
 
 @router.api_route("/vnpay/ipn", methods=["GET", "POST"])
