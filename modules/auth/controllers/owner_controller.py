@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from core.dependencies import ensure_owner
 from models.owner import Owner
 from models.user import User
 from common.dto.response import success_response
@@ -75,6 +76,7 @@ def me(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
+	ensure_owner(current_user, db, locale)
 	service = OwnerService(db)
 	owner = service.get_owner_profile(current_user.id)
 	if not owner:
@@ -108,6 +110,7 @@ def update_me(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
+	ensure_owner(current_user, db, locale)
 	service = OwnerService(db)
 	try:
 		user, owner = service.update_owner_profile(current_user.id, payload)

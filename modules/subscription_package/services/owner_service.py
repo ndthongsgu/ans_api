@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import quote_plus, urlencode
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from core.config import (
     VNPAY_ENDPOINT,
@@ -17,6 +18,7 @@ from core.config import (
     VNPAY_TMN_CODE,
 )
 from models.owner import Owner
+from models.stall import Stall
 from models.subscription_package import SubscriptionPackage
 from models.subscription_transaction import SubscriptionTransaction
 from modules.subscription_package.dto.owner_dto import SubscriptionRegisterRequest
@@ -56,7 +58,6 @@ class OwnerSubscriptionPackageService:
             "name": package.name,
             "price": float(package.price or 0),
             "max_stalls": package.max_stalls,
-            "duration_days": package.duration_days,
             "description": package.description,
             "is_deleted": package.is_deleted,
             "created_at": package.created_at,
@@ -65,39 +66,8 @@ class OwnerSubscriptionPackageService:
 
     def get_my_subscription(self, user_id: str) -> dict:
         owner = self._ensure_owner(user_id)
-
-        latest_completed_transaction = (
-            self.db.query(SubscriptionTransaction)
-            .filter(
-                SubscriptionTransaction.owner_id == owner.id,
-                SubscriptionTransaction.payment_status == "success",
-            )
-            .order_by(SubscriptionTransaction.created_at.desc())
-            .first()
-        )
-
-        if latest_completed_transaction and (
-            owner.subscription_package_id != latest_completed_transaction.subscription_package_id
-            or owner.subscription_expires_at != latest_completed_transaction.subscription_end_at
-        ):
-            owner.subscription_package_id = latest_completed_transaction.subscription_package_id
-            owner.subscription_expires_at = latest_completed_transaction.subscription_end_at
-            owner.updated_at = int(time.time())
-            self.db.commit()
-            self.db.refresh(owner)
-
         package = None
-        if latest_completed_transaction:
-            package = (
-                self.db.query(SubscriptionPackage)
-                .filter(
-                    SubscriptionPackage.id == latest_completed_transaction.subscription_package_id,
-                    SubscriptionPackage.is_deleted == False,
-                )
-                .first()
-            )
-
-        if not package and owner.subscription_package_id:
+        if owner.subscription_package_id:
             package = (
                 self.db.query(SubscriptionPackage)
                 .filter(
@@ -106,20 +76,9 @@ class OwnerSubscriptionPackageService:
                 )
                 .first()
             )
-
-        now = int(time.time())
-        expires_at = owner.subscription_expires_at or (
-            latest_completed_transaction.subscription_end_at if latest_completed_transaction else None
-        )
-        is_active = bool(expires_at and expires_at > now)
-
         return {
             "owner_id": owner.id,
-            "subscription_package_id": latest_completed_transaction.subscription_package_id if latest_completed_transaction else owner.subscription_package_id,
-            "is_active": is_active,
-            "subscription_start_at": latest_completed_transaction.subscription_start_at if latest_completed_transaction else None,
-            "subscription_expires_at": expires_at,
-            "remaining_seconds": max((expires_at or 0) - now, 0) if expires_at else 0,
+            "subscription_package_id": owner.subscription_package_id,
             "package": self._package_to_dict(package) if package else None,
         }
 
@@ -142,8 +101,6 @@ class OwnerSubscriptionPackageService:
             "qr_code_url": transaction.qr_code_url,
             "vnpay_trans_id": transaction.vnpay_trans_id,
             "vnpay_response_code": transaction.vnpay_response_code,
-            "subscription_start_at": transaction.subscription_start_at,
-            "subscription_end_at": transaction.subscription_end_at,
             "paid_at": transaction.paid_at,
             "note": transaction.note,
             "created_at": transaction.created_at,
@@ -158,6 +115,44 @@ class OwnerSubscriptionPackageService:
             .all()
         )
         return [self._package_to_dict(package) for package in packages]
+
+    def get_my_purchases(self, user_id: str) -> list[dict]:
+        """Trả về tất cả các gói đã từng mua (dựa vào subscription_transaction có owner_id), kèm transaction_id thành công gần nhất."""
+        owner = self._ensure_owner(user_id)
+
+        # Lấy tất cả transaction của owner, mọi trạng thái
+        rows = (
+            self.db.query(SubscriptionTransaction)
+            .filter(SubscriptionTransaction.owner_id == owner.id)
+            .order_by(SubscriptionTransaction.created_at.desc())
+            .all()
+        )
+
+        # Gom các package_id đã mua (duy nhất), giữ thứ tự lần mua gần nhất
+        seen_package_ids: set[str] = set()
+        result: list[dict] = []
+        for row in rows:
+            pid = row.subscription_package_id
+            if pid in seen_package_ids:
+                continue
+            seen_package_ids.add(pid)
+            package = self.db.query(SubscriptionPackage).filter(SubscriptionPackage.id == pid).first()
+            if package:
+                # Tìm transaction thành công gần nhất cho package này
+                success_tx = (
+                    self.db.query(SubscriptionTransaction)
+                    .filter(
+                        SubscriptionTransaction.owner_id == owner.id,
+                        SubscriptionTransaction.subscription_package_id == pid,
+                        SubscriptionTransaction.payment_status == "success"
+                    )
+                    .order_by(SubscriptionTransaction.created_at.desc())
+                    .first()
+                )
+                package_dict = self._package_to_dict(package)
+                package_dict["transaction_id"] = success_tx.id if success_tx else None
+                result.append(package_dict)
+        return result
 
     def list_transactions(self, user_id: str, skip: int = 0, limit: int = 100) -> tuple[list[dict], int]:
         owner = self._ensure_owner(user_id)
@@ -228,13 +223,36 @@ class OwnerSubscriptionPackageService:
         )
         return {"payUrl": payment_url}
 
+
     def register_package(self, user_id: str, payload: SubscriptionRegisterRequest) -> dict:
         owner = self._ensure_owner(user_id)
         package = self._get_package(payload.subscription_package_id)
-        now = int(time.time())
-        subscription_start_at = now
-        subscription_end_at = now + int(package.duration_days or 0) * 24 * 60 * 60
 
+        # Kiểm tra: số lượng quán hiện tại phải <= max_stalls của gói mới
+        current_stall_count = (
+            self.db.query(func.count(Stall.id))
+            .filter(Stall.owner_id == owner.id)
+            .scalar()
+        ) or 0
+        if current_stall_count > package.max_stalls:
+            raise ServiceError(
+                "stall_count_not_met",
+                f"Số lượng quán hiện tại ({current_stall_count}) vượt quá giới hạn của gói mới ({package.max_stalls}). Vui lòng xóa bớt quán trước khi chuyển gói.",
+            )
+
+        # Không cho đăng ký lại gói đã có transaction thành công
+        existed = self.db.query(SubscriptionTransaction).filter(
+            SubscriptionTransaction.owner_id == owner.id,
+            SubscriptionTransaction.subscription_package_id == package.id,
+            SubscriptionTransaction.payment_status == "success"
+        ).first()
+        if existed:
+            raise ServiceError(
+                "package_already_purchased",
+                "Bạn đã đăng ký gói này thành công trước đó. Không thể đăng ký lại cùng một gói.",
+            )
+
+        now = int(time.time())
         transaction = SubscriptionTransaction(
             owner_id=owner.id,
             subscription_package_id=package.id,
@@ -245,19 +263,17 @@ class OwnerSubscriptionPackageService:
             currency="VND",
             payment_method="vnpay",
             payment_provider="vnpay",
-            payment_status="success",
-            subscription_start_at=subscription_start_at,
-            subscription_end_at=subscription_end_at,
+            payment_status="success",  
             raw_payload=json.dumps(payload.model_dump(), ensure_ascii=False),
             created_at=now,
             updated_at=now,
         )
 
-        self.db.add(transaction)
-        self.db.commit()
-        self.db.refresh(transaction)
-
         try:
+            self.db.add(transaction)
+            self.db.commit()
+            self.db.refresh(transaction)
+
             vnpay_response = self._create_vnpay_payment(transaction, owner, package)
         except ServiceError as exc:
             transaction.payment_status = "failed"
@@ -275,6 +291,14 @@ class OwnerSubscriptionPackageService:
             self.db.commit()
             raise ServiceError("subscription_failed", "VNPay did not return payUrl")
         transaction.updated_at = int(time.time())
+
+        # Nếu thanh toán thành công (mặc định luôn success), cập nhật owner.subscription_package_id
+        if transaction.payment_status == "success":
+            owner.subscription_package_id = package.id
+            owner.updated_at = int(time.time())
+            self.db.commit()
+            self.db.refresh(owner)
+
         self.db.commit()
         self.db.refresh(transaction)
 
@@ -338,12 +362,38 @@ class OwnerSubscriptionPackageService:
         if response_code == "00" and transaction_status == "00" and amount_value == expected_amount:
             now = int(time.time())
             owner.subscription_package_id = package.id
-            owner.subscription_expires_at = transaction.subscription_end_at
             owner.updated_at = now
             transaction.payment_status = "success"
             transaction.paid_at = now
+            self.db.commit()
+            self.db.refresh(owner)
         else:
             transaction.payment_status = "failed"
-
-        self.db.commit()
+            self.db.commit()
         return {"RspCode": "00", "Message": "Confirm Success"}
+
+    def activate_purchase(self, user_id: str, transaction_id: str) -> dict:
+        owner = self._ensure_owner(user_id)
+        transaction = self.db.query(SubscriptionTransaction).filter(
+            SubscriptionTransaction.id == transaction_id,
+            SubscriptionTransaction.owner_id == owner.id,
+            SubscriptionTransaction.payment_status == "success"
+        ).first()
+        if not transaction:
+            raise ServiceError("transaction_not_found")
+        package = self.db.query(SubscriptionPackage).filter(
+            SubscriptionPackage.id == transaction.subscription_package_id,
+            SubscriptionPackage.is_deleted == False
+        ).first()
+        if not package:
+            raise ServiceError("package_not_found")
+        # Cập nhật owner sử dụng gói này
+        owner.subscription_package_id = package.id
+        owner.updated_at = int(time.time())
+        self.db.commit()
+        self.db.refresh(owner)
+        return {
+            "owner_id": owner.id,
+            "subscription_package_id": package.id,
+            "package": self._package_to_dict(package)
+        }

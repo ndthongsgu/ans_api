@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from core.dependencies import ensure_owner
 from common.dto.response import success_response
 from models.user import User
 from modules.auth.controllers.mobile_controller import get_current_user
@@ -24,6 +25,7 @@ def owner_dashboard(
 	accept_language: str | None = Header(None),
 ):
 	locale = accept_language
+	ensure_owner(current_user, db, locale)
 
 	service = OwnerDashboardService(db)
 	try:
