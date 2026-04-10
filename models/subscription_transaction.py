@@ -26,7 +26,6 @@ class SubscriptionTransaction(BaseModel):
     vnpay_response_code = Column(String(20), nullable=True)
     vnpay_raw_response = Column(Text, nullable=True)
 
-
     paid_at = Column(Integer, nullable=True)
     note = Column(Text, nullable=True)
     raw_payload = Column(Text, nullable=True)

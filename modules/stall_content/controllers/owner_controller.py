@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from core.dependencies import ensure_owner
 from models.user import User
 from modules.auth.controllers.owner_controller import get_current_user
 from modules.stall_content.dto.owner_dto import (
@@ -40,6 +41,7 @@ def create_stall_content(
 ):
     
     locale = accept_language
+    ensure_owner(current_user, db, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -64,6 +66,7 @@ def list_available_stalls_for_content(
     limit: int = Query(100, ge=1, le=1000),
 ):
     locale = accept_language
+    ensure_owner(current_user, db, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -89,6 +92,7 @@ def list_owner_contents(
 ):
     """List all contents across all stalls owned by current user"""
     locale = accept_language
+    ensure_owner(current_user, db, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -114,6 +118,7 @@ def get_available_languages(
 ):
     """Get available languages for a stall's content"""
     locale = accept_language
+    ensure_owner(current_user, db, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -138,6 +143,7 @@ def list_stall_contents_by_language(
 ):
     """List stall contents in a specific language for current owner"""
     locale = accept_language
+    ensure_owner(current_user, db, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -167,6 +173,7 @@ def get_stall_content(
 ):
     """Get a specific content"""
     locale = accept_language
+    ensure_owner(current_user, db, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -192,6 +199,7 @@ def update_stall_content(
 ):
     """Update stall content"""
     locale = accept_language
+    ensure_owner(current_user, db, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -216,6 +224,7 @@ def delete_stall_content(
 ):
     """Delete stall content permanently"""
     locale = accept_language
+    ensure_owner(current_user, db, locale)
     service = OwnerStallContentService(db)
 
     try:
@@ -241,6 +250,7 @@ def toggle_stall_content_status(
 ):
     """Toggle stall content active status via is_deleted (0/1)"""
     locale = accept_language
+    ensure_owner(current_user, db, locale)
     service = OwnerStallContentService(db)
 
     try:
