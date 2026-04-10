@@ -123,7 +123,10 @@ def detail_package(package_id: str, current_user: User = Depends(get_current_use
 def deactivate_package(package_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db), accept_language: str | None = Header(None)):
     ensure_admin(current_user, accept_language)
     service = SubscriptionPackageService(db)
-    pkg = service.deactivate_package(package_id)
+    try:
+        pkg = service.deactivate_package(package_id)
+    except RuntimeError as err:
+        raise HTTPException(status_code=400, detail=str(err))
     if not pkg:
         raise HTTPException(status_code=404, detail="Không tìm thấy gói đăng ký")
     return success_response(message="Ngưng hoạt động gói đăng ký thành công")

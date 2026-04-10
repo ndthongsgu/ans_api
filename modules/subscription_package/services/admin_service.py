@@ -1,10 +1,22 @@
 from sqlalchemy.orm import Session
+from models.owner import Owner
 from models.subscription_package import SubscriptionPackage
 
 
 class SubscriptionPackageService:
     def __init__(self, db: Session):
         self.db = db
+
+    def _has_owner_using_package(self, package_id: str) -> bool:
+        return (
+            self.db.query(Owner)
+            .filter(
+                Owner.subscription_package_id == package_id,
+                Owner.is_deleted == False,
+            )
+            .first()
+            is not None
+        )
 
     def list_packages(self, filters: dict, page: int, size: int, sortBy: str | None = None, sortDirection: str | None = None):
         q = self.db.query(SubscriptionPackage).filter(SubscriptionPackage.is_deleted == False)
@@ -68,6 +80,8 @@ class SubscriptionPackageService:
         pkg = self.get_package(package_id)
         if not pkg:
             return None
+        if self._has_owner_using_package(package_id):
+            raise RuntimeError('Không thể xóa gói đăng ký: gói này đã có người đăng ký')
         pkg.is_deleted = True
         self.db.commit()
         return pkg
@@ -84,6 +98,8 @@ class SubscriptionPackageService:
         pkg = self.get_package(package_id)
         if not pkg:
             return None
+        if self._has_owner_using_package(package_id):
+            raise RuntimeError('Không thể xóa gói đăng ký: gói này đã có người đăng ký')
         pkg.is_deleted = True
         self.db.commit()
         return pkg
