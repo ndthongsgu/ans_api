@@ -66,37 +66,8 @@ class OwnerSubscriptionPackageService:
 
     def get_my_subscription(self, user_id: str) -> dict:
         owner = self._ensure_owner(user_id)
-
-        latest_completed_transaction = (
-            self.db.query(SubscriptionTransaction)
-            .filter(
-                SubscriptionTransaction.owner_id == owner.id,
-                SubscriptionTransaction.payment_status == "success",
-            )
-            .order_by(SubscriptionTransaction.created_at.desc())
-            .first()
-        )
-
-        if latest_completed_transaction and (
-            owner.subscription_package_id != latest_completed_transaction.subscription_package_id
-        ):
-            owner.subscription_package_id = latest_completed_transaction.subscription_package_id
-            owner.updated_at = int(time.time())
-            self.db.commit()
-            self.db.refresh(owner)
-
         package = None
-        if latest_completed_transaction:
-            package = (
-                self.db.query(SubscriptionPackage)
-                .filter(
-                    SubscriptionPackage.id == latest_completed_transaction.subscription_package_id,
-                    SubscriptionPackage.is_deleted == False,
-                )
-                .first()
-            )
-
-        if not package and owner.subscription_package_id:
+        if owner.subscription_package_id:
             package = (
                 self.db.query(SubscriptionPackage)
                 .filter(
@@ -105,13 +76,9 @@ class OwnerSubscriptionPackageService:
                 )
                 .first()
             )
-
-        now = int(time.time())
-        is_active = False
         return {
             "owner_id": owner.id,
-            "subscription_package_id": latest_completed_transaction.subscription_package_id if latest_completed_transaction else owner.subscription_package_id,
-            "is_active": is_active,
+            "subscription_package_id": owner.subscription_package_id,
             "package": self._package_to_dict(package) if package else None,
         }
 
