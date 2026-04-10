@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from models.stallContent import StallContent
 from models.stallContentTranslation import StallContentTranslation
+from models.stall import Stall
 import time
 from typing import Tuple, List
 from utils.tts_generator import generate_audio_from_text, delete_audio_file
@@ -250,12 +251,17 @@ class StallContentService:
         return self.db.query(StallContent).filter(StallContent.is_deleted == False).all()
 
     def list_for_select(self):
-        """Return stall contents formatted for select dropdown"""
-        contents = self.list_all_active()
+        """Return stalls that do not have stall content yet"""
+        existing_stall_ids_query = self.db.query(StallContent.stall_id)
+        contents = self.db.query(Stall).filter(
+            Stall.is_deleted == False,
+            ~Stall.id.in_(existing_stall_ids_query)
+        ).all()
         return [
             {
                 "id": c.id,
-                "stall_id": c.stall_id
+                "name": c.name,
+                "owner_id": c.owner_id
             }
             for c in contents
         ]
