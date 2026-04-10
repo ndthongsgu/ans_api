@@ -11,12 +11,14 @@ from models.owner import Owner
 from models.stall import Stall
 from models.stallContent import StallContent
 from models.subscription_package import SubscriptionPackage
-from modules.stall.dto.owner_dto import (
-	CreateStallRequest,
-	StallResponse,
-	UpdateStallRequest,
-)
+from models.stallTranslation import StallTranslation
+from common.enums.language import LanguageCode
+from modules.stall.dto.owner_dto import CreateStallRequest, StallResponse, UpdateStallRequest
+from utils.translation import translate_text
 from utils.file_helper import save_stall_image
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceError(Exception):
@@ -215,6 +217,46 @@ class OwnerStallService:
 		)
 
 		self.db.add(stall)
+		self.db.flush()  # Get stall ID without committing yet
+		
+		# Create translations for all available languages
+		for lang_info in LanguageCode.LIST:
+			language_code = lang_info['code']
+			
+			try:
+				# Try to translate name and category to target language
+				if language_code == 'vi':
+					# Vietnamese is the original language
+					translated_name = stall_name
+					translated_category = payload.category
+				else:
+					# Translate to other languages
+					translated_name = translate_text(stall_name, 'vi', language_code)
+					translated_category = None
+					if payload.category:
+						translated_category = translate_text(payload.category, 'vi', language_code)
+				
+				translation = StallTranslation(
+					stall_id=stall.id,
+					language_code=language_code,
+					name=translated_name,
+					category=translated_category,
+				)
+				self.db.add(translation)
+				logger.info(f"[CREATE] {language_code}: {translated_name} | {translated_category}")
+			
+			except Exception as e:
+				# If translation fails, fall back to Vietnamese text
+				logger.warning(f"[FALLBACK] Translation failed for {language_code}: {str(e)}, using Vietnamese text")
+				
+				translation = StallTranslation(
+					stall_id=stall.id,
+					language_code=language_code,
+					name=stall_name,
+					category=payload.category,
+				)
+				self.db.add(translation)
+		
 		try:
 			self.db.commit()
 		except DataError as exc:
@@ -258,6 +300,88 @@ class OwnerStallService:
 			stall.price_range = self._normalize_price_range(changes["price_range"])
 
 		stall.updated_at = int(time.time())
+		
+		# Update Vietnamese translation if name or category provided
+		if "stall_name" in changes or "category" in changes:
+			vi_translation = self.db.query(StallTranslation).filter(
+				StallTranslation.stall_id == stall_id,
+				StallTranslation.language_code == "vi"
+			).first()
+			
+			if vi_translation:
+				if "stall_name" in changes:
+					vi_translation.name = changes["stall_name"]
+				if "category" in changes:
+					vi_translation.category = changes["category"]
+				vi_translation.updated_at = int(time.time())
+			else:
+				# Create Vietnamese translation if it doesn't exist
+				vi_translation = StallTranslation(
+					stall_id=stall_id,
+					language_code="vi",
+					name=changes.get("stall_name", stall.name),
+					category=changes.get("category", stall.category),
+				)
+				self.db.add(vi_translation)
+			
+			# Auto-translate to other languages when Vietnamese is updated
+			for lang_info in LanguageCode.LIST:
+				if lang_info['code'] == 'vi':
+					continue  # Already handled Vietnamese above
+				
+				language_code = lang_info['code']
+				
+				try:
+					# Translate Vietnamese name and category to target language
+					translated_name = translate_text(changes.get("stall_name", stall.name), 'vi', language_code)
+					translated_category = None
+					if changes.get("category", stall.category):
+						translated_category = translate_text(changes.get("category", stall.category), 'vi', language_code)
+					
+					# Update or create translation for this language
+					other_translation = self.db.query(StallTranslation).filter(
+						StallTranslation.stall_id == stall_id,
+						StallTranslation.language_code == language_code
+					).first()
+					
+					if other_translation:
+						other_translation.name = translated_name
+						other_translation.category = translated_category
+						other_translation.updated_at = int(time.time())
+					else:
+						# Create translation if it doesn't exist
+						other_translation = StallTranslation(
+							stall_id=stall_id,
+							language_code=language_code,
+							name=translated_name,
+							category=translated_category,
+						)
+						self.db.add(other_translation)
+					
+					logger.info(f"[UPDATE] {language_code}: {translated_name} | {translated_category}")
+				
+				except Exception as e:
+					# If translation fails, fall back to Vietnamese text
+					logger.warning(f"[FALLBACK] Translation failed for {language_code}: {str(e)}, using Vietnamese text")
+					
+					other_translation = self.db.query(StallTranslation).filter(
+						StallTranslation.stall_id == stall_id,
+						StallTranslation.language_code == language_code
+					).first()
+					
+					if other_translation:
+						other_translation.name = changes.get("stall_name", stall.name)
+						other_translation.category = changes.get("category", stall.category)
+						other_translation.updated_at = int(time.time())
+					else:
+						other_translation = StallTranslation(
+							stall_id=stall_id,
+							language_code=language_code,
+							name=changes.get("stall_name", stall.name),
+							category=changes.get("category", stall.category),
+						)
+						self.db.add(other_translation)
+		
 		try:
 			self.db.commit()
 		except DataError as exc:

@@ -15,6 +15,10 @@ class StallContentResponse(BaseModel):
     id: str
     stall_id: str
     stall_name: str | None = None
+    language_code: str | None = None
+    audio_url: str | None = None
+    audio_duration: int | None = None
+    audio_file_size: int | None = None
     tts_script: str | None = None
     created_at: int
     updated_at: int | None = None
