@@ -4,6 +4,7 @@ from datetime import datetime
 import importlib
 from pathlib import Path
 from gtts import gTTS
+from pydub import AudioSegment
 
 # Create audios directory if not exists
 AUDIOS_DIR = Path(__file__).parent.parent / "audios"
