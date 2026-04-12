@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from sqlalchemy.orm import Session
 from core.database import get_db
@@ -15,6 +16,24 @@ from common.dto.response import success_response
 from typing import List
 
 router = APIRouter(prefix="/roles")
+
+
+def parse_permissions(value):
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, list) else [str(parsed)]
+        except ValueError:
+            return [item.strip() for item in value.split(",") if item.strip()]
+
+    if isinstance(value, list):
+        return value
+
+    return [str(value)]
+
 
 # Helper to check if user is admin
 def ensure_admin(user: User, locale: str | None = None):
@@ -36,7 +55,7 @@ def paginate(req: RolePageRequest, current_user: User = Depends(get_current_user
             "name": r.name,
             "is_deleted": r.is_deleted,
             "description": r.description,
-            "permissions": r.permissions,
+            "permissions": parse_permissions(r.permissions),
         })
     return success_response(
         message="Lấy dữ liệu thành công",
@@ -139,7 +158,7 @@ def detail(role_id: str, current_user: User = Depends(get_current_user), db: Ses
         "id": r.id,
         "code": r.code,
         "name": r.name,
-        "permissions": r.permissions,
+        "permissions": parse_permissions(r.permissions),
     }
     return success_response(
         message="Lấy dữ liệu thành công",

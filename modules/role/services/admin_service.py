@@ -1,3 +1,4 @@
+import json
 from sqlalchemy.orm import Session
 from models.role import Role
 from typing import Tuple, List
@@ -38,10 +39,14 @@ class RoleService:
             raise RuntimeError('code_exists')
         
         current_time = int(time.time())
+        permissions = data.get('permissions')
+        if isinstance(permissions, list):
+            permissions = json.dumps(permissions, ensure_ascii=False)
+
         role = Role(
             code=data['code'],
             name=data['name'],
-            permissions=data.get('permissions'),
+            permissions=permissions,
             created_at=current_time,
             updated_at=current_time,
             created_by=data.get('created_by'),
@@ -64,7 +69,10 @@ class RoleService:
                 
         role.code = data['code']
         role.name = data['name']
-        role.permissions = data.get('permissions')
+        permissions = data.get('permissions')
+        if isinstance(permissions, list):
+            permissions = json.dumps(permissions, ensure_ascii=False)
+        role.permissions = permissions
         role.description = data.get('description')
         role.updated_at = int(time.time())
         role.updated_by = data.get('updated_by')
